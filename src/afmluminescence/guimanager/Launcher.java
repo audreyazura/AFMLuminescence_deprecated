@@ -5,7 +5,7 @@
  */
 package afmluminescence.guimanager;
 
-import luminescencegenerator.GeneratorManager;
+import afmluminescence.luminescencegenerator.GeneratorManager;
 
 /**
  *

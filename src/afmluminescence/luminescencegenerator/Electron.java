@@ -27,6 +27,12 @@ public class Electron extends AbsorberObject
         m_speedY = p_speedY;
     }
     
+    @Override
+    public String toString()
+    {
+        return "(x = " + m_positionX + " ; y = " + m_positionY + " ; v_x = " + m_speedX + " ; v_y = " + m_speedY + ")";
+    }
+    
     enum ElectronState
     {
         CAPTURED, FREE;

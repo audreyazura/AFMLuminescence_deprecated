@@ -17,6 +17,7 @@ public class Electron extends AbsorberObject
     private final BigDecimal m_speedY;
     
     private ElectronState m_state = ElectronState.FREE;
+    private QuantumDot m_trapingDot = null;
     
     public Electron (BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_speedX, BigDecimal p_speedY)
     {

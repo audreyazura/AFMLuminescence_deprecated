@@ -23,4 +23,14 @@ public class AbsorberObject
         
         return BigDecimalMath.sqrt(BigDecimalMath.pow(m_positionX.subtract(p_positionX), two).add(BigDecimalMath.pow(m_positionY.subtract(p_positionY), two)));
     }
+    
+    public BigDecimal getX()
+    {
+        return m_positionX;
+    }
+    
+    public BigDecimal getY()
+    {
+        return m_positionY;
+    }
 }

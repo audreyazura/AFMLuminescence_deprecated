@@ -5,6 +5,7 @@
  */
 package afmluminescence.guimanager;
 
+import afmluminescence.luminescencegenerator.DrawingSurface;
 import afmluminescence.luminescencegenerator.GeneratorManager;
 import java.math.BigDecimal;
 
@@ -20,8 +21,8 @@ public class Launcher
      */
     public static void main(String[] args)
     {
-        GeneratorManager luminescenceGenerator = new GeneratorManager();
-        luminescenceGenerator.start(1000, new BigDecimal("300"));
+        DrawingSurface absorberRepresentation = new CanvasManager();
+        new Thread(() -> ((CanvasManager) absorberRepresentation).startVisualizer()).start();
     }
     
 }

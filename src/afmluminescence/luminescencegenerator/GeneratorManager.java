@@ -11,8 +11,6 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -41,30 +39,30 @@ public class GeneratorManager implements Runnable
     {
         List<Electron> electronList = new ArrayList<>();
         
-//        PcgRSFast randomGenerator = new PcgRSFast();
-//        
-//        for (int i = 0 ; i < m_nElectron ; i += 1)
-//        {
-//            BigDecimal x = formatBigDecimal((new BigDecimal(randomGenerator.nextDouble())).multiply(canvasXSize));
-//            BigDecimal y = formatBigDecimal((new BigDecimal(randomGenerator.nextDouble())).multiply(canvasYSize));
-//            
-//            BigDecimal v_x = formatBigDecimal((new BigDecimal(randomGenerator.nextGaussian())).multiply(vth));
-//            BigDecimal v_y = formatBigDecimal((new BigDecimal(randomGenerator.nextGaussian())).multiply(vth));
-//            
-//            electronList.add(new Electron(x, y, v_x, v_y));
-//        }
+        PcgRSFast randomGenerator = new PcgRSFast();
         
-        electronList.add(new Electron(BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("1000"), new BigDecimal("100")));
+        for (int i = 0 ; i < m_nElectron ; i += 1)
+        {
+            BigDecimal x = formatBigDecimal((new BigDecimal(randomGenerator.nextDouble())).multiply(m_sampleXSize));
+            BigDecimal y = formatBigDecimal((new BigDecimal(randomGenerator.nextDouble())).multiply(m_sampleYSize));
+            
+            BigDecimal v_x = formatBigDecimal((new BigDecimal(randomGenerator.nextGaussian())).multiply(m_vth));
+            BigDecimal v_y = formatBigDecimal((new BigDecimal(randomGenerator.nextGaussian())).multiply(m_vth));
+            
+            electronList.add(new Electron(x, y, v_x, v_y));
+        }
+        
+//        electronList.add(new Electron(BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("1000"), new BigDecimal("100")));
+//        electronList.add(new Electron(new BigDecimal("0.5e-6"), BigDecimal.ZERO, new BigDecimal("1000"), new BigDecimal("100")));
         
         while(true)
         {
             for (Electron curentElectron: electronList)
             {
 //                System.out.println(curentElectron);
-                curentElectron.stepInTime(new BigDecimal("1e-15"), m_sampleXSize, m_sampleYSize);
-//                m_canvas.drawAbsorberObject(curentElectron, sampleXSize, sampleYSize, BigDecimal.valueOf(5));
+                curentElectron.stepInTime(new BigDecimal("2e-16"), m_sampleXSize, m_sampleYSize);
             }
-            m_output.log(electronList);
+            m_output.logElectrons(electronList);
         }
     }
     

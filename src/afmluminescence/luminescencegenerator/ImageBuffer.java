@@ -5,8 +5,6 @@
  */
 package afmluminescence.luminescencegenerator;
 
-import com.github.audreyazura.commonutils.PhysicsTools;
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -15,7 +13,5 @@ import java.util.List;
  */
 public interface ImageBuffer
 {
-//    public void drawAbsorberObject(AbsorberObject p_objectToDraw, BigDecimal p_xScale, BigDecimal p_yScale, BigDecimal p_radius);
-    
-    public void log(List<Electron> p_listToDraw);
+    public void logElectrons(List<Electron> p_listToDraw);
 }

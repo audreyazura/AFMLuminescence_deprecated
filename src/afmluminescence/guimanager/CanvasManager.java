@@ -5,8 +5,6 @@
  */
 package afmluminescence.guimanager;
 
-import afmluminescence.luminescencegenerator.AbsorberObject;
-import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.GeneratorManager;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import java.math.BigDecimal;
@@ -20,8 +18,9 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import afmluminescence.luminescencegenerator.ImageBuffer;
 import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.util.Duration;
 
 /**
  *
@@ -33,18 +32,28 @@ public class CanvasManager extends Application
     private BigDecimal m_yWidth;
     private BigDecimal m_sampleXSize;
     private BigDecimal m_sampleYSize;
+    private DrawingBuffer m_buffer;
     private GraphicsContext m_canvasPainter;
     private Stage m_stage;
     
-    synchronized public void drawAbsorberObject(AbsorberObject p_objectToDraw, BigDecimal p_xScale, BigDecimal p_yScale, BigDecimal p_radius)
+    private void drawAbsorberObjects()
     {
-        m_canvasPainter.setFill(Color.RED);
-        double xDrawing = ((p_objectToDraw.getX().multiply(m_xWidth.divide(p_xScale, MathContext.DECIMAL128))).subtract(p_radius)).doubleValue();
-        double yDrawing = ((p_objectToDraw.getY().multiply(m_yWidth.divide(p_yScale, MathContext.DECIMAL128))).subtract(p_radius)).doubleValue();
-        double diameter = p_radius.doubleValue() * 2;
-        m_canvasPainter.fillOval(xDrawing, yDrawing, diameter, diameter);
-        
-        m_canvasPainter.setFill(Color.TRANSPARENT);
+        m_canvasPainter.clearRect(0, 0, m_xWidth.doubleValue(), m_yWidth.doubleValue());
+        ArrayList<ObjectToDraw> toDraw = m_buffer.download();
+            
+        if (toDraw.size() > 0)
+        {
+            m_canvasPainter.setFill(Color.RED);
+            double radius = 5;
+            for(ObjectToDraw thingToDraw: toDraw)
+            {
+                double xDrawing = (thingToDraw.getX().multiply(m_xWidth.divide(m_sampleXSize, MathContext.DECIMAL128))).doubleValue() - radius;
+                double yDrawing = (thingToDraw.getY().multiply(m_yWidth.divide(m_sampleYSize, MathContext.DECIMAL128))).doubleValue() - radius;
+                double diameter = radius * 2;
+                m_canvasPainter.fillOval(xDrawing, yDrawing, diameter, diameter);
+            }
+            m_canvasPainter.setFill(Color.TRANSPARENT);
+        }
     }
     
     public void startVisualizer()
@@ -67,9 +76,6 @@ public class CanvasManager extends Application
         m_yWidth = new BigDecimal("1000");
         Canvas drawingSpace = new Canvas(m_xWidth.doubleValue(), m_yWidth.doubleValue());
         m_canvasPainter = drawingSpace.getGraphicsContext2D();
-        m_canvasPainter.setFill(Color.BLUE);
-        m_canvasPainter.fillRect(100, 500, 200, 200);
-        m_canvasPainter.setFill(Color.TRANSPARENT);
         
         Group canvasRegion = new Group(drawingSpace);
         Scene currentScene = new Scene(canvasRegion);
@@ -78,13 +84,21 @@ public class CanvasManager extends Application
         m_stage.show();
         
         ImageBuffer buffer = new DrawingBuffer();
+        m_buffer = (DrawingBuffer) buffer;
         
         m_sampleXSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
         m_sampleYSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
-        GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 1, new BigDecimal("300"), m_sampleXSize, m_sampleYSize);
+        GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 150, new BigDecimal("300"), m_sampleXSize, m_sampleYSize);
         (new Thread(luminescenceGenerator)).start();
         
-        PainterManager painterStarter = new PainterManager(m_xWidth.divide(m_sampleXSize, MathContext.DECIMAL128), m_yWidth.divide(m_sampleYSize, MathContext.DECIMAL128), (DrawingBuffer) buffer, m_canvasPainter);
-        (new Thread(painterStarter)).run();
+        Timeline animation = new Timeline(
+            new KeyFrame(
+                    Duration.seconds(0),
+                    event -> drawAbsorberObjects()
+                        ),
+            new KeyFrame(Duration.millis(1))
+        );
+        animation.setCycleCount(Timeline.INDEFINITE);
+        animation.play();
     }
 }

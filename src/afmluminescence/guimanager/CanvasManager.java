@@ -33,18 +33,18 @@ public class CanvasManager extends Application
     private BigDecimal m_yWidth;
     private BigDecimal m_sampleXSize;
     private BigDecimal m_sampleYSize;
-    private GraphicsContext m_drawingBuffer;
+    private GraphicsContext m_canvasPainter;
     private Stage m_stage;
     
     synchronized public void drawAbsorberObject(AbsorberObject p_objectToDraw, BigDecimal p_xScale, BigDecimal p_yScale, BigDecimal p_radius)
     {
-        m_drawingBuffer.setFill(Color.RED);
+        m_canvasPainter.setFill(Color.RED);
         double xDrawing = ((p_objectToDraw.getX().multiply(m_xWidth.divide(p_xScale, MathContext.DECIMAL128))).subtract(p_radius)).doubleValue();
         double yDrawing = ((p_objectToDraw.getY().multiply(m_yWidth.divide(p_yScale, MathContext.DECIMAL128))).subtract(p_radius)).doubleValue();
         double diameter = p_radius.doubleValue() * 2;
-        m_drawingBuffer.fillOval(xDrawing, yDrawing, diameter, diameter);
+        m_canvasPainter.fillOval(xDrawing, yDrawing, diameter, diameter);
         
-        m_drawingBuffer.setFill(Color.TRANSPARENT);
+        m_canvasPainter.setFill(Color.TRANSPARENT);
     }
     
     private void draw(DrawingBuffer p_readBuffer)
@@ -52,21 +52,22 @@ public class CanvasManager extends Application
         while(true)
         {
 //            long startingTime = System.nanoTime();
-            ArrayList<Electron> electronsToDraw = p_readBuffer.download();
+//            ArrayList<Electron> electronsToDraw = p_readBuffer.download();
+            ArrayList<Electron> electronsToDraw = new ArrayList<>();
 //            System.out.println("Time passed: " + (System.nanoTime() - startingTime) / 1000000000 + "s.\n");
             
             if (electronsToDraw.size() > 0)
             {
-                m_drawingBuffer.setFill(Color.RED);
+                m_canvasPainter.setFill(Color.RED);
                 double radius = 5;
                 for(Electron currentElectron: electronsToDraw)
                 {
                     double xDrawing = (currentElectron.getX().multiply(m_xWidth.divide(m_sampleXSize, MathContext.DECIMAL128))).doubleValue() - radius;
                     double yDrawing = (currentElectron.getY().multiply(m_yWidth.divide(m_sampleYSize, MathContext.DECIMAL128))).doubleValue() - radius;
                     double diameter = radius * 2;
-                    m_drawingBuffer.fillOval(xDrawing, yDrawing, diameter, diameter);
+                    m_canvasPainter.fillOval(xDrawing, yDrawing, diameter, diameter);
                 }
-                m_drawingBuffer.setFill(Color.TRANSPARENT);
+                m_canvasPainter.setFill(Color.TRANSPARENT);
             }
         }
     }
@@ -78,7 +79,7 @@ public class CanvasManager extends Application
     
     synchronized public void reset()
     {
-        m_drawingBuffer.clearRect(0, 0, m_xWidth.doubleValue(), m_yWidth.doubleValue());
+        m_canvasPainter.clearRect(0, 0, m_xWidth.doubleValue(), m_yWidth.doubleValue());
     }
     
     @Override
@@ -90,8 +91,10 @@ public class CanvasManager extends Application
         m_xWidth = new BigDecimal("1000");
         m_yWidth = new BigDecimal("1000");
         Canvas drawingSpace = new Canvas(m_xWidth.doubleValue(), m_yWidth.doubleValue());
-        m_drawingBuffer = drawingSpace.getGraphicsContext2D();
-        m_drawingBuffer.save();
+        m_canvasPainter = drawingSpace.getGraphicsContext2D();
+        m_canvasPainter.setFill(Color.BLUE);
+        m_canvasPainter.fillRect(100, 500, 200, 200);
+        m_canvasPainter.setFill(Color.TRANSPARENT);
         
         Group canvasRegion = new Group(drawingSpace);
         Scene currentScene = new Scene(canvasRegion);
@@ -105,14 +108,6 @@ public class CanvasManager extends Application
         m_sampleYSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
         GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 1, new BigDecimal("300"), m_sampleXSize, m_sampleYSize);
         (new Thread(luminescenceGenerator)).start();
-//        try
-//        {
-//            Thread.sleep(500);
-//        }
-//        catch (InterruptedException ex)
-//        {
-//            Logger.getLogger(CanvasManager.class.getName()).log(Level.SEVERE, null, ex);
-//        }
         
         draw((DrawingBuffer) buffer);
     }

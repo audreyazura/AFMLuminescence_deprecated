@@ -60,7 +60,6 @@ public class GeneratorManager implements Runnable
         {
             for (Electron curentElectron: electronList)
             {
-//                m_canvas.reset();
 //                System.out.println(curentElectron);
                 curentElectron.stepInTime(new BigDecimal("1e-15"), m_sampleXSize, m_sampleYSize);
 //                m_canvas.drawAbsorberObject(curentElectron, sampleXSize, sampleYSize, BigDecimal.valueOf(5));

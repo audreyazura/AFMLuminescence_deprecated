@@ -27,6 +27,29 @@ public class Electron extends AbsorberObject
         m_speedY = p_speedY;
     }
     
+    public void stepInTime(BigDecimal p_timeStep, BigDecimal p_maxX, BigDecimal p_maxY)
+    {
+        m_positionX = m_positionX.add(m_speedX.multiply(p_timeStep));
+        if (m_positionX.compareTo(BigDecimal.ZERO) < 0)
+        {
+            m_positionX = p_maxX.add(m_positionX);
+        }
+        else if (m_positionX.compareTo(p_maxX) > 0)
+        {
+            m_positionX = m_positionX.subtract(p_maxX);
+        }
+        
+        m_positionY = m_positionY.add(m_speedY.multiply(p_timeStep));
+        if (m_positionY.compareTo(BigDecimal.ZERO) < 0)
+        {
+            m_positionY = p_maxX.add(m_positionY);
+        }
+        else if (m_positionY.compareTo(p_maxX) > 0)
+        {
+            m_positionY = m_positionY.subtract(p_maxX);
+        }
+    }
+    
     @Override
     public String toString()
     {

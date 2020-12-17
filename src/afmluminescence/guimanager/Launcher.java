@@ -22,7 +22,7 @@ public class Launcher
     public static void main(String[] args)
     {
         CanvasManager absorberRepresentation = new CanvasManager();
-        new Thread(() -> ((CanvasManager) absorberRepresentation).startVisualizer()).start();
+        ((CanvasManager) absorberRepresentation).startVisualizer();
     }
     
 }

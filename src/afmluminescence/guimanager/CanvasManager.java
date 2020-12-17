@@ -47,31 +47,6 @@ public class CanvasManager extends Application
         m_canvasPainter.setFill(Color.TRANSPARENT);
     }
     
-    private void draw(DrawingBuffer p_readBuffer)
-    {
-        while(true)
-        {
-//            long startingTime = System.nanoTime();
-//            ArrayList<Electron> electronsToDraw = p_readBuffer.download();
-            ArrayList<Electron> electronsToDraw = new ArrayList<>();
-//            System.out.println("Time passed: " + (System.nanoTime() - startingTime) / 1000000000 + "s.\n");
-            
-            if (electronsToDraw.size() > 0)
-            {
-                m_canvasPainter.setFill(Color.RED);
-                double radius = 5;
-                for(Electron currentElectron: electronsToDraw)
-                {
-                    double xDrawing = (currentElectron.getX().multiply(m_xWidth.divide(m_sampleXSize, MathContext.DECIMAL128))).doubleValue() - radius;
-                    double yDrawing = (currentElectron.getY().multiply(m_yWidth.divide(m_sampleYSize, MathContext.DECIMAL128))).doubleValue() - radius;
-                    double diameter = radius * 2;
-                    m_canvasPainter.fillOval(xDrawing, yDrawing, diameter, diameter);
-                }
-                m_canvasPainter.setFill(Color.TRANSPARENT);
-            }
-        }
-    }
-    
     public void startVisualizer()
     {
         launch();
@@ -109,6 +84,7 @@ public class CanvasManager extends Application
         GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 1, new BigDecimal("300"), m_sampleXSize, m_sampleYSize);
         (new Thread(luminescenceGenerator)).start();
         
-        draw((DrawingBuffer) buffer);
+        PainterManager painterStarter = new PainterManager(m_xWidth.divide(m_sampleXSize, MathContext.DECIMAL128), m_yWidth.divide(m_sampleYSize, MathContext.DECIMAL128), (DrawingBuffer) buffer, m_canvasPainter);
+        (new Thread(painterStarter)).run();
     }
 }

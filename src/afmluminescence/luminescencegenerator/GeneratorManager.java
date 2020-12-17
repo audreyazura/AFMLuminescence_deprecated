@@ -54,9 +54,9 @@ public class GeneratorManager implements Runnable
         
         electronList.add(new Electron(BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("1000"), new BigDecimal("100")));
         
-        for (Electron curentElectron: electronList)
+        while(true)
         {
-            while(true)
+            for (Electron curentElectron: electronList)
             {
 //                m_canvas.reset();
 //                System.out.println(curentElectron);

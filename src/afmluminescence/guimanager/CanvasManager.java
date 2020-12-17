@@ -6,7 +6,6 @@
 package afmluminescence.guimanager;
 
 import afmluminescence.luminescencegenerator.AbsorberObject;
-import afmluminescence.luminescencegenerator.DrawingSurface;
 import afmluminescence.luminescencegenerator.GeneratorManager;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import java.math.BigDecimal;
@@ -18,19 +17,21 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import afmluminescence.luminescencegenerator.ImageBuffer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
  * @author audreyazura
  */
-public class CanvasManager extends Application implements DrawingSurface
+public class CanvasManager extends Application
 {
     private BigDecimal m_xWidth;
     private BigDecimal m_yWidth;
     private GraphicsContext m_drawingBuffer;
     private Stage m_stage;
     
-    @Override
     synchronized public void drawAbsorberObject(AbsorberObject p_objectToDraw, BigDecimal p_xScale, BigDecimal p_yScale, BigDecimal p_radius)
     {
         m_drawingBuffer.setFill(Color.RED);
@@ -42,12 +43,19 @@ public class CanvasManager extends Application implements DrawingSurface
         m_drawingBuffer.setFill(Color.TRANSPARENT);
     }
     
+    private void draw(DrawingBuffer p_readBuffer)
+    {
+        while(true)
+        {
+            p_readBuffer.download();
+        }
+    }
+    
     public void startVisualizer()
     {
         launch();
     }
     
-    @Override
     synchronized public void reset()
     {
         m_drawingBuffer.clearRect(0, 0, m_xWidth.doubleValue(), m_yWidth.doubleValue());
@@ -60,7 +68,7 @@ public class CanvasManager extends Application implements DrawingSurface
         m_stage.setResizable(false);
         
         m_xWidth = new BigDecimal("1000");
-        m_yWidth = new BigDecimal("1000");;
+        m_yWidth = new BigDecimal("1000");
         Canvas drawingSpace = new Canvas(m_xWidth.doubleValue(), m_yWidth.doubleValue());
         m_drawingBuffer = drawingSpace.getGraphicsContext2D();
         m_drawingBuffer.save();
@@ -71,7 +79,18 @@ public class CanvasManager extends Application implements DrawingSurface
         m_stage.setScene(currentScene);
         m_stage.show();
         
-        GeneratorManager luminescenceGenerator = new GeneratorManager(this, 1, new BigDecimal("300"));
+        ImageBuffer buffer = new DrawingBuffer();
+        GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 1, new BigDecimal("300"));
         (new Thread(luminescenceGenerator)).start();
+        try
+        {
+            Thread.sleep(500);
+        }
+        catch (InterruptedException ex)
+        {
+            Logger.getLogger(CanvasManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        draw((DrawingBuffer) buffer);
     }
 }

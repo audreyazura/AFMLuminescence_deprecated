@@ -12,9 +12,9 @@ import java.math.BigDecimal;
  *
  * @author audreyazura
  */
-public interface DrawingSurface
+public interface ImageBuffer
 {
-    public void drawAbsorberObject(AbsorberObject p_objectToDraw, BigDecimal p_xScale, BigDecimal p_yScale, BigDecimal p_radius);
+//    public void drawAbsorberObject(AbsorberObject p_objectToDraw, BigDecimal p_xScale, BigDecimal p_yScale, BigDecimal p_radius);
     
-    public void reset();
+    public void log();
 }

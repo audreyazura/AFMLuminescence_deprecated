@@ -7,6 +7,7 @@ package afmluminescence.guimanager;
 
 import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.ImageBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -17,33 +18,32 @@ import java.util.logging.Logger;
  */
 public class DrawingBuffer implements ImageBuffer
 {
-    private List<Electron> m_listToDraw;
-    private final static Object m_lock = new Object();
+    private volatile List<Electron> m_listToDraw = new ArrayList<>();
     
-    public void download()
+    synchronized public ArrayList<Electron> download()
     {
-        long startingTime = System.nanoTime();
-        
-        synchronized(m_lock)
+//        System.out.println(Thread.currentThread().getName() + " accessed the download.");
+        if (m_listToDraw.size() > 0)
         {
-            long passedTime = (System.nanoTime() - startingTime) / 1000000000;
-            System.out.println(Thread.currentThread().getName() + " accessed the download after " + passedTime + "s.");
+            return new ArrayList<>(m_listToDraw);
+        }
+        else
+        {
+            return new ArrayList<>();
         }
     }
     
     @Override
-    public void log()
+    synchronized public void log(List<Electron> p_lisToDraw)
     {
-        synchronized(m_lock)
-        {
-            try
-            {
-                Thread.sleep(2000);
-            }
-            catch (InterruptedException ex)
-            {
-                System.out.println("Still sleeping.");
-            }
-        }
+        m_listToDraw = new ArrayList(p_lisToDraw);
+//        try
+//        {
+//            Thread.sleep(2000);
+//        }
+//        catch (InterruptedException ex)
+//        {
+//            System.out.println("Still sleeping.");
+//        }
     }
 }

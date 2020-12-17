@@ -6,6 +6,7 @@
 package afmluminescence.guimanager;
 
 import afmluminescence.luminescencegenerator.AbsorberObject;
+import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.GeneratorManager;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import java.math.BigDecimal;
@@ -18,6 +19,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import afmluminescence.luminescencegenerator.ImageBuffer;
+import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -29,6 +31,8 @@ public class CanvasManager extends Application
 {
     private BigDecimal m_xWidth;
     private BigDecimal m_yWidth;
+    private BigDecimal m_sampleXSize;
+    private BigDecimal m_sampleYSize;
     private GraphicsContext m_drawingBuffer;
     private Stage m_stage;
     
@@ -47,7 +51,23 @@ public class CanvasManager extends Application
     {
         while(true)
         {
-            p_readBuffer.download();
+//            long startingTime = System.nanoTime();
+            ArrayList<Electron> electronsToDraw = p_readBuffer.download();
+//            System.out.println("Time passed: " + (System.nanoTime() - startingTime) / 1000000000 + "s.\n");
+            
+            if (electronsToDraw.size() > 0)
+            {
+                m_drawingBuffer.setFill(Color.RED);
+                double radius = 5;
+                for(Electron currentElectron: electronsToDraw)
+                {
+                    double xDrawing = (currentElectron.getX().multiply(m_xWidth.divide(m_sampleXSize, MathContext.DECIMAL128))).doubleValue() - radius;
+                    double yDrawing = (currentElectron.getY().multiply(m_yWidth.divide(m_sampleYSize, MathContext.DECIMAL128))).doubleValue() - radius;
+                    double diameter = radius * 2;
+                    m_drawingBuffer.fillOval(xDrawing, yDrawing, diameter, diameter);
+                }
+                m_drawingBuffer.setFill(Color.TRANSPARENT);
+            }
         }
     }
     
@@ -80,16 +100,19 @@ public class CanvasManager extends Application
         m_stage.show();
         
         ImageBuffer buffer = new DrawingBuffer();
-        GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 1, new BigDecimal("300"));
+        
+        m_sampleXSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
+        m_sampleYSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
+        GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 1, new BigDecimal("300"), m_sampleXSize, m_sampleYSize);
         (new Thread(luminescenceGenerator)).start();
-        try
-        {
-            Thread.sleep(500);
-        }
-        catch (InterruptedException ex)
-        {
-            Logger.getLogger(CanvasManager.class.getName()).log(Level.SEVERE, null, ex);
-        }
+//        try
+//        {
+//            Thread.sleep(500);
+//        }
+//        catch (InterruptedException ex)
+//        {
+//            Logger.getLogger(CanvasManager.class.getName()).log(Level.SEVERE, null, ex);
+//        }
         
         draw((DrawingBuffer) buffer);
     }

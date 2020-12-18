@@ -7,6 +7,7 @@ package afmluminescence.guimanager;
 
 import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.ImageBuffer;
+import afmluminescence.luminescencegenerator.QuantumDot;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -50,6 +51,21 @@ public class DrawingBuffer implements ImageBuffer
         }
     }
     
+    public ArrayList<ObjectToDraw> downloadQDs()
+    {
+        synchronized(m_QDLOck)
+        {
+            if (m_listQDs.size() > 0)
+            {
+                return new ArrayList<>(m_listQDs);
+            }
+            else
+            {
+                return new ArrayList<>();
+            }
+        }
+    }
+    
     public String getTimePassed()
     {
         synchronized(m_timeLock)
@@ -72,6 +88,21 @@ public class DrawingBuffer implements ImageBuffer
             }
         }
         
+    }
+    
+    @Override
+    public void logQDs (List<QuantumDot> p_listToDraw)
+    {
+        synchronized(m_QDLOck)
+        {
+            m_listQDs = new ArrayList<>();
+            
+            for (QuantumDot currentQD: p_listToDraw)
+            {
+                BigDecimal radius = currentQD.getRadius();
+                m_listQDs.add(new ObjectToDraw(currentQD.getX().multiply(m_scaleX).subtract(radius), currentQD.getY().multiply(m_scaleY).subtract(radius), (radius.multiply(m_scaleX)).doubleValue()));
+            }
+        }
     }
     
     @Override

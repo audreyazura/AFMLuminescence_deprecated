@@ -16,5 +16,7 @@ public interface ImageBuffer
 {
     public void logElectrons(List<Electron> p_listToDraw);
     
+    public void logQDs(List<QuantumDot> p_listToDraw);
+    
     public void logTime(BigDecimal p_time);
 }

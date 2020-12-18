@@ -22,46 +22,108 @@ public class GeneratorManager implements Runnable
     private final BigDecimal m_sampleYSize;
     private final BigDecimal m_vth;
     private final ImageBuffer m_output;
-    private final int m_nElectron;
+    private final int m_nElectrons;
+    private final int m_nQDs;
     
-    public GeneratorManager (ImageBuffer p_buffer, int p_nElectron, BigDecimal p_temperature, BigDecimal p_sampleX, BigDecimal p_sampleY)
+    public GeneratorManager (ImageBuffer p_buffer, int p_nElectron, int p_nQDs, BigDecimal p_temperature, BigDecimal p_sampleX, BigDecimal p_sampleY)
     {
         m_output = p_buffer;
-        m_nElectron = p_nElectron;
+        m_nElectrons = p_nElectron;
+        m_nQDs = p_nQDs;
         m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
         
         m_sampleXSize = p_sampleX;
         m_sampleYSize = p_sampleY;
     }
     
+    private QuantumDot generateQD(PcgRSFast p_randomGenerator, List<QuantumDot> p_existingQDs)
+    {
+        BigDecimal x;
+        BigDecimal y;
+        BigDecimal radius;
+        QuantumDot createdQD;
+        
+        x = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleXSize));
+        y = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleYSize));
+
+        do
+        {
+            radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 10 + 10)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+
+        }while (radius.compareTo(BigDecimal.ZERO) <= 0);
+
+        createdQD = new QuantumDot(x, y, radius);
+        
+        while(!validPosition(createdQD, p_existingQDs))
+        {
+            x = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleXSize));
+            y = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleYSize));
+            
+            do
+            {
+                radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 10 + 10)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+
+            }while (radius.compareTo(BigDecimal.ZERO) <= 0);
+            
+            createdQD = new QuantumDot(x, y, radius);
+        }
+        
+        return createdQD;
+    }
+    
+    private boolean validPosition(QuantumDot p_testedQD, List<QuantumDot> p_existingQDs)
+    {
+        boolean valid = true;
+        
+        for (QuantumDot QD: p_existingQDs)
+        {
+            valid &= p_testedQD.getRadius().add(QD.getRadius()).compareTo(p_testedQD.getDistance(QD.getX(), QD.getY())) < 0;
+        }
+        
+        return valid;
+    }
+    
     @Override
     public void run()
     {
-        List<Electron> electronList = new ArrayList<>();
-        
         PcgRSFast randomGenerator = new PcgRSFast();
         
-        for (int i = 0 ; i < m_nElectron ; i += 1)
+        BigDecimal x;
+        BigDecimal y;
+
+        //generating QDs
+        BigDecimal radius;
+        List<QuantumDot> QDList = new ArrayList<>();
+        for (int i = 0 ; i < m_nQDs ; i += 1)
         {
-            BigDecimal x = formatBigDecimal((new BigDecimal(randomGenerator.nextDouble())).multiply(m_sampleXSize));
-            BigDecimal y = formatBigDecimal((new BigDecimal(randomGenerator.nextDouble())).multiply(m_sampleYSize));
+            QDList.add(generateQD(randomGenerator, QDList));
+        }
+        m_output.logQDs(QDList);
+
+        //generating electrons
+        BigDecimal v_x;
+        BigDecimal v_y;
+        List<Electron> electronList = new ArrayList<>();
+        for (int i = 0 ; i < m_nElectrons ; i += 1)
+        {
+            x = formatBigDecimal((new BigDecimal(randomGenerator.nextDouble())).multiply(m_sampleXSize));
+            y = formatBigDecimal((new BigDecimal(randomGenerator.nextDouble())).multiply(m_sampleYSize));
             
-            BigDecimal v_x = formatBigDecimal((new BigDecimal(randomGenerator.nextGaussian())).multiply(m_vth));
-            BigDecimal v_y = formatBigDecimal((new BigDecimal(randomGenerator.nextGaussian())).multiply(m_vth));
+            v_x = formatBigDecimal((new BigDecimal(randomGenerator.nextGaussian())).multiply(m_vth));
+            v_y = formatBigDecimal((new BigDecimal(randomGenerator.nextGaussian())).multiply(m_vth));
             
             electronList.add(new Electron(x, y, v_x, v_y));
         }
+        m_output.logElectrons(electronList);
         
-//        electronList.add(new Electron(BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("1000"), new BigDecimal("100")));
-//        electronList.add(new Electron(new BigDecimal("0.5e-6"), BigDecimal.ZERO, new BigDecimal("1000"), new BigDecimal("100")));
-        
+        //calculation start!
+        //Just moving electrons around for the moment
         BigDecimal timeStep = new BigDecimal("1e-15");
         BigDecimal timePassed = BigDecimal.ZERO;
         while(true)
         {
             for (Electron curentElectron: electronList)
             {
-//                System.out.println(curentElectron);
                 curentElectron.stepInTime(timeStep, m_sampleXSize, m_sampleYSize);
             }
             timePassed = timePassed.add(timeStep);

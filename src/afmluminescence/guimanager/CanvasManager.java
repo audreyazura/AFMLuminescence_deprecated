@@ -80,6 +80,15 @@ public class CanvasManager extends Application
         
         m_canvasXWidth = new BigDecimal("1000");
         m_canvasYWidth = new BigDecimal("1000");
+        
+        m_sampleXSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
+        m_sampleYSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
+        ImageBuffer buffer = new DrawingBuffer(m_canvasXWidth.divide(m_sampleXSize, MathContext.DECIMAL128), m_canvasYWidth.divide(m_sampleYSize, MathContext.DECIMAL128));
+        m_buffer = (DrawingBuffer) buffer;
+        
+        GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 1000, 200, new BigDecimal("300"), m_sampleXSize, m_sampleYSize);
+        (new Thread(luminescenceGenerator)).start();
+        
         Canvas animationCanvas = new Canvas(m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
         m_canvasPainter = animationCanvas.getGraphicsContext2D();
         
@@ -91,20 +100,25 @@ public class CanvasManager extends Application
         m_timePainter.setFont(new Font("Source Sans Pro", 20));
         m_timePainter.fillText("Time passed: ", 5, 20);
         
-        Group canvasRegion = new Group(animationCanvas, timeCanvas);
+        Canvas QDCanvas = new Canvas(m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
+        GraphicsContext QDPainter = QDCanvas.getGraphicsContext2D();
+        ArrayList<ObjectToDraw> QDToDraw = new ArrayList<>();
+        while (QDToDraw.size() == 0)
+        {
+           QDToDraw = m_buffer.downloadQDs();
+        }
+        QDPainter.setFill(Color.GREEN);
+        for(ObjectToDraw QD: QDToDraw)
+        {
+            QDPainter.fillOval(QD.getX().doubleValue(), QD.getY().doubleValue(), QD.getRadius() * 2, QD.getRadius() * 2);
+        }
+        
+        Group canvasRegion = new Group(QDCanvas, animationCanvas, timeCanvas);
         Scene currentScene = new Scene(canvasRegion);
         
         stage.setScene(currentScene);
         stage.setTitle("Electron circulating");
         stage.show();
-        
-        m_sampleXSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
-        m_sampleYSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
-        ImageBuffer buffer = new DrawingBuffer(m_canvasXWidth.divide(m_sampleXSize, MathContext.DECIMAL128), m_canvasYWidth.divide(m_sampleYSize, MathContext.DECIMAL128));
-        m_buffer = (DrawingBuffer) buffer;
-        
-        GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 1000, 50, new BigDecimal("300"), m_sampleXSize, m_sampleYSize);
-        (new Thread(luminescenceGenerator)).start();
         
         Timeline animation = new Timeline(
             new KeyFrame(

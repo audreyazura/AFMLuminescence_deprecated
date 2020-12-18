@@ -29,8 +29,8 @@ import javafx.util.Duration;
  */
 public class CanvasManager extends Application
 {
-    private BigDecimal m_xWidth;
-    private BigDecimal m_yWidth;
+    private BigDecimal m_canvasXWidth;
+    private BigDecimal m_canvasYWidth;
     private BigDecimal m_sampleXSize;
     private BigDecimal m_sampleYSize;
     private DrawingBuffer m_buffer;
@@ -39,7 +39,7 @@ public class CanvasManager extends Application
     
     private void drawAnimated()
     {
-        m_canvasPainter.clearRect(0, 0, m_xWidth.doubleValue(), m_yWidth.doubleValue());
+        m_canvasPainter.clearRect(0, 0, m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
         ArrayList<ObjectToDraw> electrons = m_buffer.downloadElectron();
         String time = m_buffer.getTimePassed();
             
@@ -48,8 +48,8 @@ public class CanvasManager extends Application
             m_canvasPainter.setFill(Color.RED);
             for(ObjectToDraw electronToDraw: electrons)
             {
-                double xDrawing = (electronToDraw.getX().multiply(m_xWidth.divide(m_sampleXSize, MathContext.DECIMAL128))).doubleValue() - electronToDraw.getRadius();
-                double yDrawing = (electronToDraw.getY().multiply(m_yWidth.divide(m_sampleYSize, MathContext.DECIMAL128))).doubleValue() - electronToDraw.getRadius();
+                double xDrawing = electronToDraw.getX().doubleValue();
+                double yDrawing = electronToDraw.getY().doubleValue();
                 double diameter = electronToDraw.getRadius() * 2;
                 m_canvasPainter.fillOval(xDrawing, yDrawing, diameter, diameter);
             }
@@ -70,7 +70,7 @@ public class CanvasManager extends Application
     
     synchronized public void reset()
     {
-        m_canvasPainter.clearRect(0, 0, m_xWidth.doubleValue(), m_yWidth.doubleValue());
+        m_canvasPainter.clearRect(0, 0, m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
     }
     
     @Override
@@ -78,9 +78,9 @@ public class CanvasManager extends Application
     {
         stage.setResizable(false);
         
-        m_xWidth = new BigDecimal("1000");
-        m_yWidth = new BigDecimal("1000");
-        Canvas animationCanvas = new Canvas(m_xWidth.doubleValue(), m_yWidth.doubleValue());
+        m_canvasXWidth = new BigDecimal("1000");
+        m_canvasYWidth = new BigDecimal("1000");
+        Canvas animationCanvas = new Canvas(m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
         m_canvasPainter = animationCanvas.getGraphicsContext2D();
         
         Canvas timeCanvas = new Canvas(250, 30);
@@ -98,12 +98,12 @@ public class CanvasManager extends Application
         stage.setTitle("Electron circulating");
         stage.show();
         
-        ImageBuffer buffer = new DrawingBuffer();
-        m_buffer = (DrawingBuffer) buffer;
-        
         m_sampleXSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
         m_sampleYSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
-        GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 1000, new BigDecimal("300"), m_sampleXSize, m_sampleYSize);
+        ImageBuffer buffer = new DrawingBuffer(m_canvasXWidth.divide(m_sampleXSize, MathContext.DECIMAL128), m_canvasYWidth.divide(m_sampleYSize, MathContext.DECIMAL128));
+        m_buffer = (DrawingBuffer) buffer;
+        
+        GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 1000, 50, new BigDecimal("300"), m_sampleXSize, m_sampleYSize);
         (new Thread(luminescenceGenerator)).start();
         
         Timeline animation = new Timeline(

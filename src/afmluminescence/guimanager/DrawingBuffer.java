@@ -18,6 +18,9 @@ import java.util.List;
  */
 public class DrawingBuffer implements ImageBuffer
 {
+    private final BigDecimal m_scaleX;
+    private final BigDecimal m_scaleY;
+    
     private volatile List<ObjectToDraw> m_listElectron = new ArrayList<>();
     private volatile List<ObjectToDraw> m_listQDs = new ArrayList<>();
     private volatile String m_timePassed = "0";
@@ -25,6 +28,12 @@ public class DrawingBuffer implements ImageBuffer
     private static Object m_electronLock = new Object();
     private static Object m_QDLOck = new Object();
     private static Object m_timeLock = new Object();
+    
+    public DrawingBuffer (BigDecimal p_scaleX, BigDecimal p_scaleY)
+    {
+        m_scaleX = p_scaleX;
+        m_scaleY = p_scaleY;
+    }
     
     public ArrayList<ObjectToDraw> downloadElectron()
     {
@@ -58,7 +67,8 @@ public class DrawingBuffer implements ImageBuffer
             
             for (Electron currentElectron: p_lisToDraw)
             {
-                m_listElectron.add(new ObjectToDraw(currentElectron.getX(), currentElectron.getY(), 2));
+                BigDecimal radius = new BigDecimal("2");
+                m_listElectron.add(new ObjectToDraw((currentElectron.getX().multiply(m_scaleX)).subtract(radius), (currentElectron.getY().multiply(m_scaleY)).subtract(radius), radius.doubleValue()));
             }
         }
         

@@ -20,6 +20,7 @@ import afmluminescence.luminescencegenerator.ImageBuffer;
 import java.util.ArrayList;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.scene.text.Font;
 import javafx.util.Duration;
 
 /**
@@ -34,26 +35,32 @@ public class CanvasManager extends Application
     private BigDecimal m_sampleYSize;
     private DrawingBuffer m_buffer;
     private GraphicsContext m_canvasPainter;
-    private Stage m_stage;
+    private GraphicsContext m_timePainter;
     
-    private void drawAbsorberObjects()
+    private void drawAnimated()
     {
         m_canvasPainter.clearRect(0, 0, m_xWidth.doubleValue(), m_yWidth.doubleValue());
-        ArrayList<ObjectToDraw> toDraw = m_buffer.download();
+        ArrayList<ObjectToDraw> electrons = m_buffer.downloadElectron();
+        String time = m_buffer.getTimePassed();
             
-        if (toDraw.size() > 0)
+        if (electrons.size() > 0)
         {
             m_canvasPainter.setFill(Color.RED);
-            double radius = 5;
-            for(ObjectToDraw thingToDraw: toDraw)
+            for(ObjectToDraw electronToDraw: electrons)
             {
-                double xDrawing = (thingToDraw.getX().multiply(m_xWidth.divide(m_sampleXSize, MathContext.DECIMAL128))).doubleValue() - radius;
-                double yDrawing = (thingToDraw.getY().multiply(m_yWidth.divide(m_sampleYSize, MathContext.DECIMAL128))).doubleValue() - radius;
-                double diameter = radius * 2;
+                double xDrawing = (electronToDraw.getX().multiply(m_xWidth.divide(m_sampleXSize, MathContext.DECIMAL128))).doubleValue() - electronToDraw.getRadius();
+                double yDrawing = (electronToDraw.getY().multiply(m_yWidth.divide(m_sampleYSize, MathContext.DECIMAL128))).doubleValue() - electronToDraw.getRadius();
+                double diameter = electronToDraw.getRadius() * 2;
                 m_canvasPainter.fillOval(xDrawing, yDrawing, diameter, diameter);
             }
             m_canvasPainter.setFill(Color.TRANSPARENT);
         }
+        
+        m_timePainter.clearRect(120, 0, 100, 30);
+        m_timePainter.setFill(Color.BLACK);
+        m_timePainter.fillRect(115, 0, 100, 30);
+        m_timePainter.setFill(Color.WHITE);
+        m_timePainter.fillText(time + " fs", 120, 20);
     }
     
     public void startVisualizer()
@@ -69,34 +76,42 @@ public class CanvasManager extends Application
     @Override
     public void start (Stage stage)
     {
-        m_stage = stage;
-        m_stage.setResizable(false);
+        stage.setResizable(false);
         
         m_xWidth = new BigDecimal("1000");
         m_yWidth = new BigDecimal("1000");
-        Canvas drawingSpace = new Canvas(m_xWidth.doubleValue(), m_yWidth.doubleValue());
-        m_canvasPainter = drawingSpace.getGraphicsContext2D();
+        Canvas animationCanvas = new Canvas(m_xWidth.doubleValue(), m_yWidth.doubleValue());
+        m_canvasPainter = animationCanvas.getGraphicsContext2D();
         
-        Group canvasRegion = new Group(drawingSpace);
+        Canvas timeCanvas = new Canvas(250, 30);
+        m_timePainter = timeCanvas.getGraphicsContext2D();
+        m_timePainter.setFill(Color.BLACK);
+        m_timePainter.fillRect(0, 0, 120, 30);
+        m_timePainter.setFill(Color.WHITE);
+        m_timePainter.setFont(new Font("Source Sans Pro", 20));
+        m_timePainter.fillText("Time passed: ", 5, 20);
+        
+        Group canvasRegion = new Group(animationCanvas, timeCanvas);
         Scene currentScene = new Scene(canvasRegion);
         
-        m_stage.setScene(currentScene);
-        m_stage.show();
+        stage.setScene(currentScene);
+        stage.setTitle("Electron circulating");
+        stage.show();
         
         ImageBuffer buffer = new DrawingBuffer();
         m_buffer = (DrawingBuffer) buffer;
         
         m_sampleXSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
         m_sampleYSize = (new BigDecimal(2)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
-        GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 150, new BigDecimal("300"), m_sampleXSize, m_sampleYSize);
+        GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 1000, new BigDecimal("300"), m_sampleXSize, m_sampleYSize);
         (new Thread(luminescenceGenerator)).start();
         
         Timeline animation = new Timeline(
             new KeyFrame(
                     Duration.seconds(0),
-                    event -> drawAbsorberObjects()
+                    event -> drawAnimated()
                         ),
-            new KeyFrame(Duration.millis(1))
+            new KeyFrame(Duration.millis(30))
         );
         animation.setCycleCount(Timeline.INDEFINITE);
         animation.play();

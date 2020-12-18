@@ -7,6 +7,7 @@ package afmluminescence.guimanager;
 
 import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.ImageBuffer;
+import com.github.audreyazura.commonutils.PhysicsTools;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,30 +18,58 @@ import java.util.List;
  */
 public class DrawingBuffer implements ImageBuffer
 {
-    private volatile List<ObjectToDraw> m_listToDraw = new ArrayList<>();
+    private volatile List<ObjectToDraw> m_listElectron = new ArrayList<>();
+    private volatile List<ObjectToDraw> m_listQDs = new ArrayList<>();
+    private volatile String m_timePassed = "0";
     
-    synchronized public ArrayList<ObjectToDraw> download()
+    private static Object m_electronLock = new Object();
+    private static Object m_QDLOck = new Object();
+    private static Object m_timeLock = new Object();
+    
+    public ArrayList<ObjectToDraw> downloadElectron()
     {
-//        System.out.println(Thread.currentThread().getName() + " accessed the download.");
-        if (m_listToDraw.size() > 0)
+        synchronized(m_electronLock)
         {
-            return new ArrayList<>(m_listToDraw);
+            if (m_listElectron.size() > 0)
+            {
+                return new ArrayList<>(m_listElectron);
+            }
+            else
+            {
+                return new ArrayList<>();
+            }
         }
-        else
+    }
+    
+    public String getTimePassed()
+    {
+        synchronized(m_timeLock)
         {
-            return new ArrayList<>();
+            return m_timePassed;
         }
     }
     
     @Override
-    synchronized public void logElectrons(List<Electron> p_lisToDraw)
+    public void logElectrons(List<Electron> p_lisToDraw)
     {
-        m_listToDraw = new ArrayList();
-//        System.out.println(p_lisToDraw.size());
-        
-        for (Electron currentElectron: p_lisToDraw)
+        synchronized(m_electronLock)
         {
-            m_listToDraw.add(new ObjectToDraw(currentElectron.getX(), currentElectron.getY(), new BigDecimal("5"), ObjectToDraw.AbsorberObjectType.Electron));
+            m_listElectron = new ArrayList();
+            
+            for (Electron currentElectron: p_lisToDraw)
+            {
+                m_listElectron.add(new ObjectToDraw(currentElectron.getX(), currentElectron.getY(), 2));
+            }
+        }
+        
+    }
+    
+    @Override
+    public void logTime(BigDecimal p_time)
+    {
+        synchronized(m_timeLock)
+        {
+            m_timePassed = (p_time.divide(PhysicsTools.UnitsPrefix.FEMTO.getMultiplier())).stripTrailingZeros().toPlainString();
         }
     }
 }

@@ -55,14 +55,18 @@ public class GeneratorManager implements Runnable
 //        electronList.add(new Electron(BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("1000"), new BigDecimal("100")));
 //        electronList.add(new Electron(new BigDecimal("0.5e-6"), BigDecimal.ZERO, new BigDecimal("1000"), new BigDecimal("100")));
         
+        BigDecimal timeStep = new BigDecimal("1e-15");
+        BigDecimal timePassed = BigDecimal.ZERO;
         while(true)
         {
             for (Electron curentElectron: electronList)
             {
 //                System.out.println(curentElectron);
-                curentElectron.stepInTime(new BigDecimal("2e-16"), m_sampleXSize, m_sampleYSize);
+                curentElectron.stepInTime(timeStep, m_sampleXSize, m_sampleYSize);
             }
+            timePassed = timePassed.add(timeStep);
             m_output.logElectrons(electronList);
+            m_output.logTime(timePassed);
         }
     }
     

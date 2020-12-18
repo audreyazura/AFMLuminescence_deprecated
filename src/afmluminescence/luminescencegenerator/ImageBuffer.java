@@ -5,6 +5,7 @@
  */
 package afmluminescence.luminescencegenerator;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -14,4 +15,6 @@ import java.util.List;
 public interface ImageBuffer
 {
     public void logElectrons(List<Electron> p_listToDraw);
+    
+    public void logTime(BigDecimal p_time);
 }

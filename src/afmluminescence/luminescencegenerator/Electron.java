@@ -97,7 +97,6 @@ public class Electron extends AbsorberObject
                     {
                         m_state = ElectronState.RECOMBINED;
                         m_trapingDot = null;
-                        System.out.println("Recombined!");
                     }
                 }
             }

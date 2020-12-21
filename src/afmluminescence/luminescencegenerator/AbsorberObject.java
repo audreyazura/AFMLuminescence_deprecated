@@ -19,7 +19,19 @@ public class AbsorberObject
     
     public BigDecimal getDistance (BigDecimal p_positionX, BigDecimal p_positionY)
     {
-        return BigDecimalMath.sqrt(((m_positionX.subtract(p_positionX)).pow(2)).add(((m_positionY.subtract(p_positionY)).pow(2))));
+        BigDecimal squaredDistance = ((m_positionX.subtract(p_positionX)).pow(2)).add(((m_positionY.subtract(p_positionY)).pow(2)));
+        BigDecimal distance;
+        
+        if (squaredDistance.compareTo(BigDecimal.ZERO) == 0)
+        {
+            distance = BigDecimal.ZERO;
+        }
+        else
+        {
+            distance = BigDecimalMath.sqrt(squaredDistance);
+        }
+        
+        return distance;
     }
     
     public BigDecimal getX()

@@ -6,6 +6,7 @@
 package afmluminescence.guimanager;
 
 import java.math.BigDecimal;
+import javafx.scene.paint.Color;
 
 /**
  *
@@ -15,12 +16,14 @@ public class ObjectToDraw
 {
     private final BigDecimal m_xPosition;
     private final BigDecimal m_yPosition;
+    private final Color m_objectColor;
     private final double m_radius;
     
-    public ObjectToDraw (BigDecimal x, BigDecimal y, double radius)
+    public ObjectToDraw (BigDecimal x, BigDecimal y, Color p_paintColor, double radius)
     {
         m_xPosition = x;
         m_yPosition = y;
+        m_objectColor = p_paintColor;
         m_radius = radius;
     }
     
@@ -32,6 +35,11 @@ public class ObjectToDraw
     public BigDecimal getY()
     {
         return m_yPosition;
+    }
+    
+    public Color getColor()
+    {
+        return m_objectColor;
     }
     
     public double getRadius()

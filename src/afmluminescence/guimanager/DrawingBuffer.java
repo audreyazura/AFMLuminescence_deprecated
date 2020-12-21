@@ -12,6 +12,7 @@ import com.github.audreyazura.commonutils.PhysicsTools;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import javafx.scene.paint.Color;
 
 /**
  *
@@ -86,7 +87,7 @@ public class DrawingBuffer implements ImageBuffer
                 if (currentElectron.isFree())
                 {
                     BigDecimal radius = new BigDecimal("2");
-                    m_listElectron.add(new ObjectToDraw((currentElectron.getX().multiply(m_scaleX)).subtract(radius), (currentElectron.getY().multiply(m_scaleY)).subtract(radius), radius.doubleValue()));
+                    m_listElectron.add(new ObjectToDraw((currentElectron.getX().multiply(m_scaleX)).subtract(radius), (currentElectron.getY().multiply(m_scaleY)).subtract(radius), Color.BLACK, radius.doubleValue()));
                 }
             }
         }
@@ -103,7 +104,18 @@ public class DrawingBuffer implements ImageBuffer
             for (QuantumDot currentQD: p_listToDraw)
             {
                 BigDecimal radius = currentQD.getRadius();
-                m_listQDs.add(new ObjectToDraw(currentQD.getX().multiply(m_scaleX).subtract(radius), currentQD.getY().multiply(m_scaleY).subtract(radius), (radius.multiply(m_scaleX)).doubleValue()));
+                
+                Color toPaint;
+                if (currentQD.hasRecombined())
+                {
+                    toPaint = Color.RED;
+                }
+                else
+                {
+                    toPaint = Color.GREEN;
+                }
+                
+                m_listQDs.add(new ObjectToDraw(currentQD.getX().multiply(m_scaleX).subtract(radius), currentQD.getY().multiply(m_scaleY).subtract(radius), toPaint, (radius.multiply(m_scaleX)).doubleValue()));
             }
         }
     }

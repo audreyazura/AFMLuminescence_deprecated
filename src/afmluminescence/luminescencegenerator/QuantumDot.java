@@ -18,6 +18,7 @@ public class QuantumDot extends AbsorberObject
     private final double m_captureProbability;
     private final BigDecimal m_energy;
     private final BigDecimal m_radius;
+    private boolean m_recombined = false;
     
     //ΔEg(InAs/GaAs) = 1.1 eV
     public QuantumDot (BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_radius)
@@ -28,15 +29,16 @@ public class QuantumDot extends AbsorberObject
         //to be calculated later
         m_radius = p_radius;
         m_energy = (new BigDecimal("0.354")).multiply(PhysicsTools.EV);
-        m_captureProbability = 0.001;
+        m_captureProbability = 0.01;
     }
     
-    public boolean capture(PcgRSFast p_RNG)
+    synchronized public boolean capture(PcgRSFast p_RNG)
     {
         return p_RNG.nextDouble() < m_captureProbability;
     }
     
-    public boolean escape(PcgRSFast p_RNG)
+    //will calculate probability based on phonon density
+    synchronized public boolean escape(PcgRSFast p_RNG)
     {
         return p_RNG.nextDouble() < m_captureProbability;
     }
@@ -46,10 +48,27 @@ public class QuantumDot extends AbsorberObject
         return m_radius;
     }
     
-    //will calculate the probablity based on the electron and hole wave function
-    public boolean recombine(PcgRSFast p_RNG)
+    public boolean hasRecombined()
     {
-        return p_RNG.nextDouble() < m_captureProbability;
+        return m_recombined;
+    }
+    
+    //will calculate the probablity based on the electron and hole wave function
+    synchronized public boolean recombine(PcgRSFast p_RNG)
+    {
+        boolean didIt = p_RNG.nextDouble() < m_captureProbability;
+        
+        if (!m_recombined)
+        {
+            m_recombined = didIt;
+        }
+        
+        return didIt;
+    }
+    
+    public void resetRecombine()
+    {
+        m_recombined = false;
     }
     
     @Override

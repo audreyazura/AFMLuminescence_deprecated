@@ -95,7 +95,6 @@ public class GeneratorManager implements Runnable
         BigDecimal y;
 
         //generating QDs
-        BigDecimal radius;
         List<QuantumDot> QDList = new ArrayList<>();
         for (int i = 0 ; i < m_nQDs ; i += 1)
         {
@@ -141,7 +140,7 @@ public class GeneratorManager implements Runnable
         ElectronMover[] moverArray = new ElectronMover[numberOfChunks];
         for (int i = 0 ; i < numberOfChunks ; i += 1)
         {
-            moverArray[i] = new ElectronMover(m_sampleXSize, m_sampleYSize, timeStep, electronChunks[i], QDList);
+            moverArray[i] = new ElectronMover(m_sampleXSize, m_sampleYSize, timeStep, m_vth, electronChunks[i], QDList);
         }
         
         //calculation start!
@@ -182,7 +181,7 @@ public class GeneratorManager implements Runnable
         }
     }
     
-    private BigDecimal formatBigDecimal(BigDecimal p_toFormat)
+    static BigDecimal formatBigDecimal(BigDecimal p_toFormat)
     {
         return p_toFormat.stripTrailingZeros();
     }

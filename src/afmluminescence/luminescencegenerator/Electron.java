@@ -9,6 +9,7 @@ import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.math.BigDecimal;
 import java.util.List;
+import org.nevec.rjm.BigDecimalMath;
 
 /**
  *
@@ -16,8 +17,8 @@ import java.util.List;
  */
 public class Electron extends AbsorberObject
 {
-    private final BigDecimal m_speedX;
-    private final BigDecimal m_speedY;
+    private BigDecimal m_speedX;
+    private BigDecimal m_speedY;
     
     private ElectronState m_state = ElectronState.FREE;
     private QuantumDot m_trapingDot = null;
@@ -40,7 +41,7 @@ public class Electron extends AbsorberObject
         return m_state == ElectronState.RECOMBINED;
     }
     
-    public void stepInTime(BigDecimal p_timeStep, BigDecimal p_maxX, BigDecimal p_maxY, List<QuantumDot> p_sampleQDs, PcgRSFast p_RNG)
+    public void stepInTime(BigDecimal p_timeStep, BigDecimal p_maxX, BigDecimal p_maxY, BigDecimal p_vth, List<QuantumDot> p_sampleQDs, PcgRSFast p_RNG)
     {
         /**
          * moving the electron if it hasn't been captured or hasn't recombined
@@ -50,27 +51,10 @@ public class Electron extends AbsorberObject
         {
             if (m_state == ElectronState.FREE)
             {
-                m_positionX = m_positionX.add(m_speedX.multiply(p_timeStep));
-                if (m_positionX.compareTo(BigDecimal.ZERO) < 0)
-                {
-                    m_positionX = p_maxX.add(m_positionX);
-                }
-                else if (m_positionX.compareTo(p_maxX) > 0)
-                {
-                    m_positionX = m_positionX.subtract(p_maxX);
-                }
-
-                m_positionY = m_positionY.add(m_speedY.multiply(p_timeStep));
-                if (m_positionY.compareTo(BigDecimal.ZERO) < 0)
-                {
-                    m_positionY = p_maxX.add(m_positionY);
-                }
-                else if (m_positionY.compareTo(p_maxX) > 0)
-                {
-                    m_positionY = m_positionY.subtract(p_maxX);
-                }
+                BigDecimal deltaX = m_speedX.multiply(p_timeStep);
+                BigDecimal deltaY = m_speedY.multiply(p_timeStep);
                 
-                BigDecimal electronVision = (new BigDecimal("100")).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier());
+                BigDecimal electronVision = BigDecimalMath.sqrt(deltaX.pow(2).add(deltaY.pow(2)));
                 for (QuantumDot QD: p_sampleQDs)
                 {
                     if ((getDistance(QD.getX(), QD.getY()).subtract(QD.getRadius())).compareTo(electronVision) <= 0)
@@ -83,12 +67,39 @@ public class Electron extends AbsorberObject
                         }
                     }
                 }
+                
+                if (m_state == ElectronState.FREE)
+                {
+                    m_positionX = m_positionX.add(deltaX);
+                    if (m_positionX.compareTo(BigDecimal.ZERO) < 0)
+                    {
+                        m_positionX = p_maxX.add(m_positionX);
+                    }
+                    else if (m_positionX.compareTo(p_maxX) > 0)
+                    {
+                        m_positionX = m_positionX.subtract(p_maxX);
+                    }
+
+                    m_positionY = m_positionY.add(deltaY);
+                    if (m_positionY.compareTo(BigDecimal.ZERO) < 0)
+                    {
+                        m_positionY = p_maxX.add(m_positionY);
+                    }
+                    else if (m_positionY.compareTo(p_maxX) > 0)
+                    {
+                        m_positionY = m_positionY.subtract(p_maxX);
+                    }
+                }
             }
             else
             {
                 if (m_trapingDot.escape(p_RNG))
                 {
                     m_state = ElectronState.FREE;
+                    m_positionX = m_trapingDot.getX();
+                    m_positionY = m_trapingDot.getY();
+                    m_speedX = GeneratorManager.formatBigDecimal((new BigDecimal(p_RNG.nextGaussian())).multiply(p_vth));
+                    m_speedY = GeneratorManager.formatBigDecimal((new BigDecimal(p_RNG.nextGaussian())).multiply(p_vth));
                     m_trapingDot = null;
                 }
                 else

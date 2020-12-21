@@ -18,16 +18,18 @@ public class ElectronMover implements Runnable
 {
     private final BigDecimal m_sampleXSize;
     private final BigDecimal m_sampleYSize;
-    private final BigDecimal m_timeStep;    
+    private final BigDecimal m_timeStep;
+    private final BigDecimal m_vth;
     private final List<Electron> m_electronList;
     private final List<QuantumDot> m_QDList;
     private final PcgRSFast m_randomGenerator;
     
-    public ElectronMover (BigDecimal p_sampleXMax, BigDecimal p_sampleYMax, BigDecimal p_timeStep, List<Electron> p_electronToTreat, List<QuantumDot> p_sampleQDs)
+    public ElectronMover (BigDecimal p_sampleXMax, BigDecimal p_sampleYMax, BigDecimal p_timeStep, BigDecimal p_vth, List<Electron> p_electronToTreat, List<QuantumDot> p_sampleQDs)
     {
         m_sampleXSize = p_sampleXMax;
         m_sampleYSize = p_sampleYMax;
         m_timeStep = p_timeStep;
+        m_vth = p_vth;
         m_electronList = new ArrayList(p_electronToTreat);
         m_QDList = new ArrayList(p_sampleQDs);
         m_randomGenerator = new PcgRSFast();
@@ -55,7 +57,7 @@ public class ElectronMover implements Runnable
     {
         for (Electron curentElectron: m_electronList)
         {
-            curentElectron.stepInTime(m_timeStep, m_sampleXSize, m_sampleYSize, m_QDList, m_randomGenerator);
+            curentElectron.stepInTime(m_timeStep, m_sampleXSize, m_sampleYSize, m_vth, m_QDList, m_randomGenerator);
         }
     }
 }

@@ -10,7 +10,10 @@ import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -116,19 +119,58 @@ public class GeneratorManager implements Runnable
         }
         m_output.logElectrons(electronList);
         
-        //calculation start!
-        //Just moving electrons around for the moment
         BigDecimal timeStep = new BigDecimal("1e-15");
-        BigDecimal timePassed = BigDecimal.ZERO;
-        while(true)
+        
+        //cutting calculation into chunks to distribute it between cores
+        int numberOfChunks = Integer.min(Runtime.getRuntime().availableProcessors(), electronList.size());
+        Iterator<Electron> electronIterator = electronList.iterator();
+        ArrayList<Electron>[] electronChunks = new ArrayList[numberOfChunks];
+        for (int i = 0 ; i < numberOfChunks ; i += 1)
         {
-            for (Electron curentElectron: electronList)
+            electronChunks[i] = new ArrayList<>();
+        }
+        
+        int nElectronTreated = 0;
+        while (electronIterator.hasNext())
+        {
+            electronChunks[nElectronTreated%numberOfChunks].add(electronIterator.next());
+            nElectronTreated += 1;
+        }
+        
+        Thread[] workerArray = new Thread[numberOfChunks];
+        ElectronMover[] moverArray = new ElectronMover[numberOfChunks];
+        for (int i = 0 ; i < numberOfChunks ; i += 1)
+        {
+            moverArray[i] = new ElectronMover(m_sampleXSize, m_sampleYSize, timeStep, electronChunks[i], QDList);
+        }
+        
+        //calculation start!
+        BigDecimal timePassed = BigDecimal.ZERO;
+        m_output.logTime(timePassed);
+        ArrayList<Electron> currentELectronList;
+        try
+        {
+            while(true)
             {
-                curentElectron.stepInTime(timeStep, m_sampleXSize, m_sampleYSize);
+                currentELectronList = new ArrayList<>();
+                for (int i = 0 ; i < numberOfChunks ; i += 1)
+                {
+                    workerArray[i] = new Thread(moverArray[i]);
+                    workerArray[i].start();
+                }
+                for (int i = 0 ; i < numberOfChunks ; i += 1)
+                {
+                    workerArray[i].join();
+                    currentELectronList.addAll(moverArray[i].getElectronList());
+                }
+                timePassed = timePassed.add(timeStep);
+                m_output.logElectrons(currentELectronList);
+                m_output.logTime(timePassed);
             }
-            timePassed = timePassed.add(timeStep);
-            m_output.logElectrons(electronList);
-            m_output.logTime(timePassed);
+        }
+        catch (InterruptedException ex)
+        {
+            Logger.getLogger(GeneratorManager.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     

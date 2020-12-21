@@ -5,7 +5,10 @@
  */
 package afmluminescence.luminescencegenerator;
 
+import com.github.audreyazura.commonutils.PhysicsTools;
+import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  *
@@ -27,26 +30,77 @@ public class Electron extends AbsorberObject
         m_speedY = p_speedY;
     }
     
-    public void stepInTime(BigDecimal p_timeStep, BigDecimal p_maxX, BigDecimal p_maxY)
+    public boolean isFree()
     {
-        m_positionX = m_positionX.add(m_speedX.multiply(p_timeStep));
-        if (m_positionX.compareTo(BigDecimal.ZERO) < 0)
+        return m_state == ElectronState.FREE;
+    }
+    
+    public boolean isRecombined()
+    {
+        return m_state == ElectronState.RECOMBINED;
+    }
+    
+    public void stepInTime(BigDecimal p_timeStep, BigDecimal p_maxX, BigDecimal p_maxY, List<QuantumDot> p_sampleQDs, PcgRSFast p_RNG)
+    {
+        /**
+         * moving the electron if it hasn't been captured or hasn't recombined
+         * if it has been captured, it can either recombine or escape
+        **/
+        if (!(m_state == ElectronState.RECOMBINED))
         {
-            m_positionX = p_maxX.add(m_positionX);
-        }
-        else if (m_positionX.compareTo(p_maxX) > 0)
-        {
-            m_positionX = m_positionX.subtract(p_maxX);
-        }
-        
-        m_positionY = m_positionY.add(m_speedY.multiply(p_timeStep));
-        if (m_positionY.compareTo(BigDecimal.ZERO) < 0)
-        {
-            m_positionY = p_maxX.add(m_positionY);
-        }
-        else if (m_positionY.compareTo(p_maxX) > 0)
-        {
-            m_positionY = m_positionY.subtract(p_maxX);
+            if (m_state == ElectronState.FREE)
+            {
+                m_positionX = m_positionX.add(m_speedX.multiply(p_timeStep));
+                if (m_positionX.compareTo(BigDecimal.ZERO) < 0)
+                {
+                    m_positionX = p_maxX.add(m_positionX);
+                }
+                else if (m_positionX.compareTo(p_maxX) > 0)
+                {
+                    m_positionX = m_positionX.subtract(p_maxX);
+                }
+
+                m_positionY = m_positionY.add(m_speedY.multiply(p_timeStep));
+                if (m_positionY.compareTo(BigDecimal.ZERO) < 0)
+                {
+                    m_positionY = p_maxX.add(m_positionY);
+                }
+                else if (m_positionY.compareTo(p_maxX) > 0)
+                {
+                    m_positionY = m_positionY.subtract(p_maxX);
+                }
+                
+                BigDecimal electronVision = (new BigDecimal("100")).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier());
+                for (QuantumDot QD: p_sampleQDs)
+                {
+                    if ((getDistance(QD.getX(), QD.getY()).subtract(QD.getRadius())).compareTo(electronVision) <= 0)
+                    {
+                        if (QD.capture(p_RNG))
+                        {
+                            m_state = ElectronState.CAPTURED;
+                            m_trapingDot = QD;
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (m_trapingDot.escape(p_RNG))
+                {
+                    m_state = ElectronState.FREE;
+                    m_trapingDot = null;
+                }
+                else
+                {
+                    if (m_trapingDot.recombine(p_RNG))
+                    {
+                        m_state = ElectronState.RECOMBINED;
+                        m_trapingDot = null;
+                        System.out.println("Recombined!");
+                    }
+                }
+            }
         }
     }
     
@@ -58,6 +112,6 @@ public class Electron extends AbsorberObject
     
     enum ElectronState
     {
-        CAPTURED, FREE;
+        CAPTURED, FREE, RECOMBINED;
     }
 }

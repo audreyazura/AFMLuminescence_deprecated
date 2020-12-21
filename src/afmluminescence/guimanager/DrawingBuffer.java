@@ -83,8 +83,11 @@ public class DrawingBuffer implements ImageBuffer
             
             for (Electron currentElectron: p_lisToDraw)
             {
-                BigDecimal radius = new BigDecimal("2");
-                m_listElectron.add(new ObjectToDraw((currentElectron.getX().multiply(m_scaleX)).subtract(radius), (currentElectron.getY().multiply(m_scaleY)).subtract(radius), radius.doubleValue()));
+                if (currentElectron.isFree())
+                {
+                    BigDecimal radius = new BigDecimal("2");
+                    m_listElectron.add(new ObjectToDraw((currentElectron.getX().multiply(m_scaleX)).subtract(radius), (currentElectron.getY().multiply(m_scaleY)).subtract(radius), radius.doubleValue()));
+                }
             }
         }
         

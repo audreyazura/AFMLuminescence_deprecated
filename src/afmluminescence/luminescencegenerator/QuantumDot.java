@@ -5,6 +5,8 @@
  */
 package afmluminescence.luminescencegenerator;
 
+import com.github.audreyazura.commonutils.PhysicsTools;
+import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.math.BigDecimal;
 
 /**
@@ -13,10 +15,11 @@ import java.math.BigDecimal;
  */
 public class QuantumDot extends AbsorberObject
 {
-    private final BigDecimal m_captureProbability;
+    private final double m_captureProbability;
     private final BigDecimal m_energy;
     private final BigDecimal m_radius;
     
+    //ΔEg(InAs/GaAs) = 1.1 eV
     public QuantumDot (BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_radius)
     {
         m_positionX = p_positionX;
@@ -24,13 +27,29 @@ public class QuantumDot extends AbsorberObject
         
         //to be calculated later
         m_radius = p_radius;
-        m_energy = p_radius;
-        m_captureProbability = p_radius;
+        m_energy = (new BigDecimal("0.354")).multiply(PhysicsTools.EV);
+        m_captureProbability = 0.001;
+    }
+    
+    public boolean capture(PcgRSFast p_RNG)
+    {
+        return p_RNG.nextDouble() < m_captureProbability;
+    }
+    
+    public boolean escape(PcgRSFast p_RNG)
+    {
+        return p_RNG.nextDouble() < m_captureProbability;
     }
     
     public BigDecimal getRadius()
     {
         return m_radius;
+    }
+    
+    //will calculate the probablity based on the electron and hole wave function
+    public boolean recombine(PcgRSFast p_RNG)
+    {
+        return p_RNG.nextDouble() < m_captureProbability;
     }
     
     @Override

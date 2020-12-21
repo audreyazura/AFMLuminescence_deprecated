@@ -119,7 +119,7 @@ public class GeneratorManager implements Runnable
         }
         m_output.logElectrons(electronList);
         
-        BigDecimal timeStep = new BigDecimal("1e-15");
+        BigDecimal timeStep = new BigDecimal("1e-12");
         
         //cutting calculation into chunks to distribute it between cores
         int numberOfChunks = Integer.min(Runtime.getRuntime().availableProcessors(), electronList.size());
@@ -148,11 +148,13 @@ public class GeneratorManager implements Runnable
         BigDecimal timePassed = BigDecimal.ZERO;
         m_output.logTime(timePassed);
         ArrayList<Electron> currentELectronList;
+        boolean allFinished = false;
         try
         {
-            while(true)
+            while(!allFinished)
             {
                 currentELectronList = new ArrayList<>();
+                allFinished = true;
                 for (int i = 0 ; i < numberOfChunks ; i += 1)
                 {
                     workerArray[i] = new Thread(moverArray[i]);
@@ -162,10 +164,16 @@ public class GeneratorManager implements Runnable
                 {
                     workerArray[i].join();
                     currentELectronList.addAll(moverArray[i].getElectronList());
+                    allFinished &= moverArray[i].allRecombined();
                 }
                 timePassed = timePassed.add(timeStep);
                 m_output.logElectrons(currentELectronList);
                 m_output.logTime(timePassed);
+                m_output.logQDs(QDList);
+                for (QuantumDot QD: QDList)
+                {
+                    QD.resetRecombine();
+                }
             }
         }
         catch (InterruptedException ex)

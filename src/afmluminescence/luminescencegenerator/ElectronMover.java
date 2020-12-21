@@ -33,6 +33,18 @@ public class ElectronMover implements Runnable
         m_randomGenerator = new PcgRSFast();
     }
     
+    public boolean allRecombined()
+    {
+        boolean finished = true;
+        
+        for (Electron currentElectron: m_electronList)
+        {
+            finished &= currentElectron.isRecombined();
+        }
+        
+        return finished;
+    }
+    
     public ArrayList<Electron> getElectronList()
     {
         return new ArrayList(m_electronList);

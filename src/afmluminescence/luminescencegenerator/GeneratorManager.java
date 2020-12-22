@@ -174,6 +174,8 @@ public class GeneratorManager implements Runnable
                     QD.resetRecombine();
                 }
             }
+            
+            //log the recombination profile here by taking the energy of the QD the electrons recombined.
         }
         catch (InterruptedException ex)
         {

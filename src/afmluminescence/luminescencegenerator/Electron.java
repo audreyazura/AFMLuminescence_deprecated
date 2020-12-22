@@ -107,7 +107,6 @@ public class Electron extends AbsorberObject
                     if (m_trapingDot.recombine(p_RNG))
                     {
                         m_state = ElectronState.RECOMBINED;
-                        m_trapingDot = null;
                     }
                 }
             }

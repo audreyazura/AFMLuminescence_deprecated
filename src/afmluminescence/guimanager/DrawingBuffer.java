@@ -94,6 +94,7 @@ public class DrawingBuffer implements ImageBuffer
         
     }
     
+    //WARNING: ONLY THE LAST QDS TO HAVE RECOMBINED SHOWN AT THE MOMENT
     @Override
     public void logQDs (List<QuantumDot> p_listToDraw)
     {

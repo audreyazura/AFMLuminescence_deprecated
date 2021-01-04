@@ -7,7 +7,7 @@ This software aim to reproduce the luminscence of a quantum dot (QD) layer. It d
 ## Dependency
 
 * JDK 11 or JRE 11
-* Jave FX 11
+* Java FX 11
 * [audreyazura/CommonUtils](https://github.com/audreyazura/CommonUtils)
 * [BigDecimalMath (by Dr. Richard J. Mathard)](https://arxiv.org/abs/0908.3030v4)
 * [PCG (java implementation by Kilian Brachtendorf)](https://github.com/KilianB/pcg-java)

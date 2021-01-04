@@ -119,6 +119,7 @@ public class GeneratorManager implements Runnable
         m_output.logElectrons(electronList);
         
         BigDecimal timeStep = new BigDecimal("1e-12");
+//        BigDecimal timeStep = new BigDecimal("1e-15");
         
         //cutting calculation into chunks to distribute it between cores
         int numberOfChunks = Integer.min(Runtime.getRuntime().availableProcessors(), electronList.size());

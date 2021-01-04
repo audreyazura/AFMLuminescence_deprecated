@@ -138,6 +138,7 @@ public class CanvasManager extends Application
                     Duration.seconds(0),
                     event -> drawAnimated()),
             new KeyFrame(Duration.millis(500))
+//            new KeyFrame(Duration.millis(30))
         );
         animation.setCycleCount(Timeline.INDEFINITE);
         animation.play();

@@ -19,10 +19,14 @@ package afmluminescence.luminescencegenerator;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.MathContext;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,6 +43,8 @@ public class GeneratorManager implements Runnable
     private final int m_nElectrons;
     private final int m_nQDs;
     
+    private final HashMap<BigInteger, Set<QuantumDot>> m_map = new HashMap<>();
+    
     public GeneratorManager (ImageBuffer p_buffer, int p_nElectron, int p_nQDs, BigDecimal p_temperature, BigDecimal p_sampleX, BigDecimal p_sampleY)
     {
         m_output = p_buffer;
@@ -48,6 +54,29 @@ public class GeneratorManager implements Runnable
         
         m_sampleXSize = p_sampleX;
         m_sampleYSize = p_sampleY;
+    }
+    
+    private void addToMap(QuantumDot p_QDToAdd)
+    {
+        BigDecimal startAbscissa = (p_QDToAdd.getX().subtract(p_QDToAdd.getRadius())).scaleByPowerOfTen(PhysicsTools.UnitsPrefix.NANO.getScale());
+        BigDecimal endAbscissa = (p_QDToAdd.getX().add(p_QDToAdd.getRadius())).scaleByPowerOfTen(PhysicsTools.UnitsPrefix.NANO.getScale());
+        
+        for (BigDecimal currentAbscissa = startAbscissa ; currentAbscissa.compareTo(endAbscissa) <= 0 ; currentAbscissa = currentAbscissa.add(BigDecimal.ONE))
+        {
+            BigInteger index = currentAbscissa.toBigInteger();
+            
+            Set<QuantumDot> currentSet = m_map.get(index);
+            if (currentSet == null)
+            {
+                currentSet = new HashSet<>();
+                currentSet.add(p_QDToAdd);
+                m_map.put(index, currentSet);
+            }
+            else
+            {
+                currentSet.add(p_QDToAdd);
+            }
+        }
     }
     
     private QuantumDot generateQD(PcgRSFast p_randomGenerator, List<QuantumDot> p_existingQDs)
@@ -62,7 +91,7 @@ public class GeneratorManager implements Runnable
 
         do
         {
-            radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 10 + 10)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+            radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 3 + 10)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
 
         }while (radius.compareTo(BigDecimal.ZERO) <= 0);
 
@@ -75,7 +104,7 @@ public class GeneratorManager implements Runnable
             
             do
             {
-                radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 10 + 10)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 3 + 10)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
 
             }while (radius.compareTo(BigDecimal.ZERO) <= 0);
             
@@ -109,7 +138,9 @@ public class GeneratorManager implements Runnable
         List<QuantumDot> QDList = new ArrayList<>();
         for (int i = 0 ; i < m_nQDs ; i += 1)
         {
-            QDList.add(generateQD(randomGenerator, QDList));
+            QuantumDot currentQD = generateQD(randomGenerator, QDList);
+            QDList.add(currentQD);
+            addToMap(currentQD);
         }
         m_output.logQDs(QDList);
 
@@ -130,7 +161,7 @@ public class GeneratorManager implements Runnable
         m_output.logElectrons(electronList);
         
         BigDecimal timeStep = new BigDecimal("1e-12");
-//        BigDecimal timeStep = new BigDecimal("1e-15");
+//        BigDecimal timeStep = new BigDecimal("1e-14");
         
         //cutting calculation into chunks to distribute it between cores
         int numberOfChunks = Integer.min(Runtime.getRuntime().availableProcessors(), electronList.size());
@@ -152,7 +183,7 @@ public class GeneratorManager implements Runnable
         ElectronMover[] moverArray = new ElectronMover[numberOfChunks];
         for (int i = 0 ; i < numberOfChunks ; i += 1)
         {
-            moverArray[i] = new ElectronMover(m_sampleXSize, m_sampleYSize, timeStep, m_vth, electronChunks[i], QDList);
+            moverArray[i] = new ElectronMover(m_sampleXSize, m_sampleYSize, timeStep, m_vth, electronChunks[i], m_map);
         }
         
         //calculation start!

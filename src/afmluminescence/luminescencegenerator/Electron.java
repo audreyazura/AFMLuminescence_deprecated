@@ -19,7 +19,10 @@ package afmluminescence.luminescencegenerator;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.math.BigDecimal;
-import java.util.List;
+import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import org.nevec.rjm.BigDecimalMath;
 
 /**
@@ -52,7 +55,7 @@ public class Electron extends AbsorberObject
         return m_state == ElectronState.RECOMBINED;
     }
     
-    public void stepInTime(BigDecimal p_timeStep, BigDecimal p_maxX, BigDecimal p_maxY, BigDecimal p_vth, List<QuantumDot> p_sampleQDs, PcgRSFast p_RNG)
+    public void stepInTime(BigDecimal p_timeStep, BigDecimal p_maxX, BigDecimal p_maxY, BigDecimal p_vth, HashMap<BigInteger, Set<QuantumDot>> p_map, PcgRSFast p_RNG)
     {
         /**
          * moving the electron if it hasn't been captured or hasn't recombined
@@ -66,7 +69,24 @@ public class Electron extends AbsorberObject
                 BigDecimal deltaY = m_speedY.multiply(p_timeStep);
                 
                 BigDecimal electronVision = BigDecimalMath.sqrt(deltaX.pow(2).add(deltaY.pow(2)));
-                for (QuantumDot QD: p_sampleQDs)
+                
+                //finding QD in range in x
+                BigDecimal scanStart = (m_positionX.subtract(electronVision)).scaleByPowerOfTen(PhysicsTools.UnitsPrefix.NANO.getScale());
+                BigDecimal scanEnd = (m_positionX.add(electronVision)).scaleByPowerOfTen(PhysicsTools.UnitsPrefix.NANO.getScale());
+                Set<QuantumDot> atRangeDots = new HashSet<>();
+                for (BigDecimal iter = scanStart ; iter.compareTo(scanEnd) <= 0 ; iter = iter.add(BigDecimal.ONE))
+                {
+                    Set<QuantumDot> currentSet = p_map.get(iter.toBigInteger());
+                    if (currentSet != null)
+                    {
+                        for (QuantumDot QD: currentSet)
+                        {
+                            atRangeDots.add(QD);
+                        }
+                    }
+                }
+                
+                for (QuantumDot QD: atRangeDots)
                 {
                     if ((getDistance(QD.getX(), QD.getY()).subtract(QD.getRadius())).compareTo(electronVision) <= 0)
                     {

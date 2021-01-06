@@ -18,8 +18,11 @@ package afmluminescence.luminescencegenerator;
 
 import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  *
@@ -31,18 +34,18 @@ public class ElectronMover implements Runnable
     private final BigDecimal m_sampleYSize;
     private final BigDecimal m_timeStep;
     private final BigDecimal m_vth;
+    private final HashMap<BigInteger, Set<QuantumDot>> m_QDMap;
     private final List<Electron> m_electronList;
-    private final List<QuantumDot> m_QDList;
     private final PcgRSFast m_randomGenerator;
     
-    public ElectronMover (BigDecimal p_sampleXMax, BigDecimal p_sampleYMax, BigDecimal p_timeStep, BigDecimal p_vth, List<Electron> p_electronToTreat, List<QuantumDot> p_sampleQDs)
+    public ElectronMover (BigDecimal p_sampleXMax, BigDecimal p_sampleYMax, BigDecimal p_timeStep, BigDecimal p_vth, List<Electron> p_electronToTreat, HashMap<BigInteger, Set<QuantumDot>> p_map)
     {
         m_sampleXSize = p_sampleXMax;
         m_sampleYSize = p_sampleYMax;
         m_timeStep = p_timeStep;
         m_vth = p_vth;
         m_electronList = new ArrayList(p_electronToTreat);
-        m_QDList = new ArrayList(p_sampleQDs);
+        m_QDMap = new HashMap(p_map);
         m_randomGenerator = new PcgRSFast();
     }
     
@@ -68,7 +71,7 @@ public class ElectronMover implements Runnable
     {
         for (Electron curentElectron: m_electronList)
         {
-            curentElectron.stepInTime(m_timeStep, m_sampleXSize, m_sampleYSize, m_vth, m_QDList, m_randomGenerator);
+            curentElectron.stepInTime(m_timeStep, m_sampleXSize, m_sampleYSize, m_vth, m_QDMap, m_randomGenerator);
         }
     }
 }

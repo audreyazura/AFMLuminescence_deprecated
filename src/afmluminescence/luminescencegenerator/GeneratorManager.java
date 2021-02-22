@@ -91,7 +91,7 @@ public class GeneratorManager implements Runnable
 
         do
         {
-            radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 3 + 10)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+            radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 2.1 + 12)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
 
         }while (radius.compareTo(BigDecimal.ZERO) <= 0);
 
@@ -104,7 +104,7 @@ public class GeneratorManager implements Runnable
             
             do
             {
-                radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 3 + 10)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 2.1 + 12)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
 
             }while (radius.compareTo(BigDecimal.ZERO) <= 0);
             

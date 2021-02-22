@@ -16,6 +16,7 @@
  */
 package afmluminescence.guimanager;
 
+import afmluminescence.executionmanager.ExecutionManager;
 import afmluminescence.luminescencegenerator.GeneratorManager;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import java.math.BigDecimal;
@@ -54,7 +55,7 @@ public class CanvasManager extends Application
         m_canvasPainter.clearRect(0, 0, m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
         m_QDPainter.clearRect(0, 0, m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
         
-        ArrayList<ObjectToDraw> electrons = m_buffer.downloadElectron();
+        ArrayList<ObjectToDraw> electrons = m_buffer.downloadMoving();
         String time = m_buffer.getTimePassed();
             
         if (electrons.size() > 0)
@@ -64,13 +65,13 @@ public class CanvasManager extends Application
                 m_canvasPainter.setFill(electronToDraw.getColor());
                 double xDrawing = electronToDraw.getX().doubleValue();
                 double yDrawing = electronToDraw.getY().doubleValue();
-                double diameter = electronToDraw.getRadius() * 2;
-                m_canvasPainter.fillOval(xDrawing, yDrawing, diameter, diameter);
+                double radius = electronToDraw.getRadius();
+                m_canvasPainter.fillOval(xDrawing - radius, yDrawing - radius, radius * 2, radius * 2);
             }
             m_canvasPainter.setFill(Color.TRANSPARENT);
         }
         
-        for (ObjectToDraw QDToDraw: m_buffer.downloadQDs())
+        for (ObjectToDraw QDToDraw: m_buffer.downloadFixed())
         {
             m_QDPainter.setFill(QDToDraw.getColor());
             double xDrawing = QDToDraw.getX().doubleValue();
@@ -83,7 +84,7 @@ public class CanvasManager extends Application
         m_timePainter.setFill(Color.BLACK);
         m_timePainter.fillRect(115, 0, 100, 30);
         m_timePainter.setFill(Color.WHITE);
-        m_timePainter.fillText(time + " fs", 120, 20);
+        m_timePainter.fillText(time + " ps", 120, 20);
     }
     
     public void startVisualizer()
@@ -106,11 +107,10 @@ public class CanvasManager extends Application
         
         m_sampleXSize = (new BigDecimal(1)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
         m_sampleYSize = (new BigDecimal(1)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
-        ImageBuffer buffer = new DrawingBuffer(m_canvasXWidth.divide(m_sampleXSize, MathContext.DECIMAL128), m_canvasYWidth.divide(m_sampleYSize, MathContext.DECIMAL128));
-        m_buffer = (DrawingBuffer) buffer;
+        DrawingBuffer buffer = new DrawingBuffer(m_canvasXWidth.divide(m_sampleXSize, MathContext.DECIMAL128), m_canvasYWidth.divide(m_sampleYSize, MathContext.DECIMAL128));
+        m_buffer = buffer;
         
-        GeneratorManager luminescenceGenerator = new GeneratorManager(buffer, 1000, 350, new BigDecimal("300"), m_sampleXSize, m_sampleYSize);
-        (new Thread(luminescenceGenerator)).start();
+        new ExecutionManager(buffer, m_sampleXSize, m_sampleYSize);
         
         Canvas animationCanvas = new Canvas(m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
         m_canvasPainter = animationCanvas.getGraphicsContext2D();
@@ -128,7 +128,7 @@ public class CanvasManager extends Application
         ArrayList<ObjectToDraw> QDToDraw = new ArrayList<>();
         while (QDToDraw.size() == 0)
         {
-           QDToDraw = m_buffer.downloadQDs();
+           QDToDraw = m_buffer.downloadFixed();
         }
         
         for(ObjectToDraw QD: QDToDraw)

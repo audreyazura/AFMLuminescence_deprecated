@@ -16,30 +16,26 @@
  */
 package afmluminescence.guimanager;
 
-import afmluminescence.luminescencegenerator.Electron;
-import afmluminescence.luminescencegenerator.ImageBuffer;
-import afmluminescence.luminescencegenerator.QuantumDot;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import javafx.scene.paint.Color;
 
 /**
  *
  * @author Alban Lafuente
  */
-public class DrawingBuffer implements ImageBuffer
+public class DrawingBuffer
 {
     private final BigDecimal m_scaleX;
     private final BigDecimal m_scaleY;
     
-    private volatile List<ObjectToDraw> m_listElectron = new ArrayList<>();
-    private volatile List<ObjectToDraw> m_listQDs = new ArrayList<>();
+    private volatile List<ObjectToDraw> m_listMoving = new ArrayList<>();
+    private volatile List<ObjectToDraw> m_listFixed = new ArrayList<>();
     private volatile String m_timePassed = "0";
     
-    private static Object m_electronLock = new Object();
-    private static Object m_QDLOck = new Object();
+    private static Object m_movingLock = new Object();
+    private static Object m_fixedLock = new Object();
     private static Object m_timeLock = new Object();
     
     public DrawingBuffer (BigDecimal p_scaleX, BigDecimal p_scaleY)
@@ -48,13 +44,13 @@ public class DrawingBuffer implements ImageBuffer
         m_scaleY = p_scaleY;
     }
     
-    public ArrayList<ObjectToDraw> downloadElectron()
+    public ArrayList<ObjectToDraw> downloadMoving()
     {
-        synchronized(m_electronLock)
+        synchronized(m_movingLock)
         {
-            if (m_listElectron.size() > 0)
+            if (m_listMoving.size() > 0)
             {
-                return new ArrayList<>(m_listElectron);
+                return new ArrayList<>(m_listMoving);
             }
             else
             {
@@ -63,13 +59,13 @@ public class DrawingBuffer implements ImageBuffer
         }
     }
     
-    public ArrayList<ObjectToDraw> downloadQDs()
+    public ArrayList<ObjectToDraw> downloadFixed()
     {
-        synchronized(m_QDLOck)
+        synchronized(m_fixedLock)
         {
-            if (m_listQDs.size() > 0)
+            if (m_listFixed.size() > 0)
             {
-                return new ArrayList<>(m_listQDs);
+                return new ArrayList<>(m_listFixed);
             }
             else
             {
@@ -86,53 +82,36 @@ public class DrawingBuffer implements ImageBuffer
         }
     }
     
-    @Override
-    public void logElectrons(List<Electron> p_lisToDraw)
+    public void logMoving(List<ObjectToDraw> p_listToDraw)
     {
-        synchronized(m_electronLock)
+        synchronized(m_movingLock)
         {
-            m_listElectron = new ArrayList();
+            m_listMoving = new ArrayList<>();
             
-            for (Electron currentElectron: p_lisToDraw)
+            for (ObjectToDraw object: p_listToDraw)
             {
-                if (currentElectron.isFree())
-                {
-                    BigDecimal radius = new BigDecimal("2");
-                    m_listElectron.add(new ObjectToDraw((currentElectron.getX().multiply(m_scaleX)).subtract(radius), (currentElectron.getY().multiply(m_scaleY)).subtract(radius), Color.BLACK, radius.doubleValue()));
-                }
+                object.rescale(m_scaleX, m_scaleY, 1);
+                m_listMoving.add(object);
             }
         }
         
     }
     
     //WARNING: ONLY THE LAST QDS TO HAVE RECOMBINED SHOWN AT THE MOMENT
-    @Override
-    public void logQDs (List<QuantumDot> p_listToDraw)
+    public void logFixed (List<ObjectToDraw> p_listToDraw)
     {
-        synchronized(m_QDLOck)
+        synchronized(m_fixedLock)
         {
-            m_listQDs = new ArrayList<>();
+            m_listFixed = new ArrayList<>();
             
-            for (QuantumDot currentQD: p_listToDraw)
+            for (ObjectToDraw object: p_listToDraw)
             {
-                BigDecimal radius = currentQD.getRadius();
-                
-                Color toPaint;
-                if (currentQD.hasRecombined())
-                {
-                    toPaint = Color.RED;
-                }
-                else
-                {
-                    toPaint = Color.GREEN;
-                }
-                
-                m_listQDs.add(new ObjectToDraw(currentQD.getX().multiply(m_scaleX).subtract(radius), currentQD.getY().multiply(m_scaleY).subtract(radius), toPaint, (radius.multiply(m_scaleX)).doubleValue()));
+                object.rescale(m_scaleX, m_scaleY, m_scaleX.doubleValue());
+                m_listFixed.add(object);
             }
         }
     }
     
-    @Override
     public void logTime(BigDecimal p_time)
     {
         synchronized(m_timeLock)

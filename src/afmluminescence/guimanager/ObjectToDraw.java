@@ -25,10 +25,10 @@ import javafx.scene.paint.Color;
  */
 public class ObjectToDraw
 {
-    private final BigDecimal m_xPosition;
-    private final BigDecimal m_yPosition;
+    private BigDecimal m_xPosition;
+    private BigDecimal m_yPosition;
     private final Color m_objectColor;
-    private final double m_radius;
+    private double m_radius;
     
     public ObjectToDraw (BigDecimal x, BigDecimal y, Color p_paintColor, double radius)
     {
@@ -56,5 +56,12 @@ public class ObjectToDraw
     public double getRadius()
     {
         return m_radius;
+    }
+    
+    public void rescale (BigDecimal xScale, BigDecimal yScale, double radiusScale)
+    {
+        m_xPosition = m_xPosition.multiply(xScale);
+        m_yPosition = m_yPosition.multiply(yScale);
+        m_radius *= radiusScale;
     }
 }

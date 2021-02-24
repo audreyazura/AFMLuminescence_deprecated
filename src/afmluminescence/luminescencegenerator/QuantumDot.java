@@ -85,6 +85,6 @@ public class QuantumDot extends AbsorberObject
     @Override
     public String toString()
     {
-        return "(x = " + m_positionX + " ; y = " + m_positionY + " ; size = " + m_radius;
+        return "(x = " + m_positionX + " ; y = " + m_positionY + " ; radius = " + m_radius;
     }
 }

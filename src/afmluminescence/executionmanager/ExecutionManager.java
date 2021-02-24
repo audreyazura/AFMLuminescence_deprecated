@@ -33,11 +33,16 @@ import javafx.scene.paint.Color;
  */
 public class ExecutionManager implements ImageBuffer
 {
+    private final BigDecimal m_scaleX;
+    private final BigDecimal m_scaleY;
     private final DrawingBuffer m_buffer;
     private final GeneratorManager m_generator;
     
-    public ExecutionManager (DrawingBuffer p_buffer, BigDecimal p_sampleXSize, BigDecimal p_sampleYSize)
+    public ExecutionManager (DrawingBuffer p_buffer, BigDecimal p_sampleXSize, BigDecimal p_sampleYSize, BigDecimal p_scaleX, BigDecimal p_scaleY)
     {
+        m_scaleX = p_scaleX;
+        m_scaleY = p_scaleY;
+        
         m_buffer = p_buffer;
         m_generator = new GeneratorManager(this, 1000, 350, new BigDecimal("300"), p_sampleXSize, p_sampleYSize);
          
@@ -53,7 +58,9 @@ public class ExecutionManager implements ImageBuffer
         {
             if (currentElectron.isFree())
             {
-                objectList.add(new ObjectToDraw(currentElectron.getX(), currentElectron.getY(), Color.BLACK, 2));
+                BigDecimal radius = new BigDecimal("2");
+                
+                objectList.add(new ObjectToDraw(currentElectron.getX().multiply(m_scaleX).subtract(radius), currentElectron.getY().multiply(m_scaleY).subtract(radius), Color.BLACK, radius.doubleValue()));
             }
         }
         
@@ -67,7 +74,7 @@ public class ExecutionManager implements ImageBuffer
             
         for (QuantumDot currentQD: p_listToDraw)
         {
-            double radius = currentQD.getRadius().doubleValue();
+            BigDecimal radius = currentQD.getRadius().multiply(m_scaleX);
 
             Color toPaint;
             if (currentQD.hasRecombined())
@@ -79,7 +86,7 @@ public class ExecutionManager implements ImageBuffer
                 toPaint = Color.GREEN;
             }
 
-            objectList.add(new ObjectToDraw(currentQD.getX(), currentQD.getY(), toPaint, radius));
+            objectList.add(new ObjectToDraw(currentQD.getX().multiply(m_scaleX).subtract(radius), currentQD.getY().multiply(m_scaleY).subtract(radius), toPaint, radius.doubleValue()));
         }
         
         m_buffer.logFixed(objectList);

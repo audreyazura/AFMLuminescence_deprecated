@@ -107,10 +107,12 @@ public class CanvasManager extends Application
         
         m_sampleXSize = (new BigDecimal(1)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
         m_sampleYSize = (new BigDecimal(1)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
-        DrawingBuffer buffer = new DrawingBuffer(m_canvasXWidth.divide(m_sampleXSize, MathContext.DECIMAL128), m_canvasYWidth.divide(m_sampleYSize, MathContext.DECIMAL128));
+        BigDecimal scaleX = m_canvasXWidth.divide(m_sampleXSize, MathContext.DECIMAL128);
+        BigDecimal scaleY = m_canvasYWidth.divide(m_sampleYSize, MathContext.DECIMAL128);
+        DrawingBuffer buffer = new DrawingBuffer(scaleX, scaleY);
         m_buffer = buffer;
         
-        new ExecutionManager(buffer, m_sampleXSize, m_sampleYSize);
+        new ExecutionManager(buffer, m_sampleXSize, m_sampleYSize, scaleX, scaleY);
         
         Canvas animationCanvas = new Canvas(m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
         m_canvasPainter = animationCanvas.getGraphicsContext2D();

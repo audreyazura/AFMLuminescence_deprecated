@@ -57,11 +57,4 @@ public class ObjectToDraw
     {
         return m_radius;
     }
-    
-    public void rescale (BigDecimal xScale, BigDecimal yScale, double radiusScale)
-    {
-        m_xPosition = m_xPosition.multiply(xScale);
-        m_yPosition = m_yPosition.multiply(yScale);
-        m_radius *= radiusScale;
-    }
 }

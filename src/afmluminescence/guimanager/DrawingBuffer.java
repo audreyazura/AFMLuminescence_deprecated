@@ -86,13 +86,7 @@ public class DrawingBuffer
     {
         synchronized(m_movingLock)
         {
-            m_listMoving = new ArrayList<>();
-            
-            for (ObjectToDraw object: p_listToDraw)
-            {
-                object.rescale(m_scaleX, m_scaleY, 1);
-                m_listMoving.add(object);
-            }
+            m_listMoving = new ArrayList<>(p_listToDraw);
         }
         
     }
@@ -102,13 +96,7 @@ public class DrawingBuffer
     {
         synchronized(m_fixedLock)
         {
-            m_listFixed = new ArrayList<>();
-            
-            for (ObjectToDraw object: p_listToDraw)
-            {
-                object.rescale(m_scaleX, m_scaleY, m_scaleX.doubleValue());
-                m_listFixed.add(object);
-            }
+            m_listFixed = new ArrayList<>(p_listToDraw);
         }
     }
     

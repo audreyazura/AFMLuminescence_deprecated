@@ -22,9 +22,14 @@ import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.GeneratorManager;
 import afmluminescence.luminescencegenerator.ImageBuffer;
 import afmluminescence.luminescencegenerator.QuantumDot;
+import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.zip.DataFormatException;
 import javafx.scene.paint.Color;
 
 /**
@@ -35,18 +40,35 @@ public class ExecutionManager implements ImageBuffer
 {
     private final BigDecimal m_scaleX;
     private final BigDecimal m_scaleY;
+    private final File m_luminescence;
     private final DrawingBuffer m_buffer;
-    private final GeneratorManager m_generator;
     
-    public ExecutionManager (DrawingBuffer p_buffer, BigDecimal p_sampleXSize, BigDecimal p_sampleYSize, BigDecimal p_scaleX, BigDecimal p_scaleY)
+    public ExecutionManager (DrawingBuffer p_buffer, List<String> p_filesPaths, BigDecimal p_sampleXSize, BigDecimal p_sampleYSize, BigDecimal p_scaleX, BigDecimal p_scaleY)
     {
         m_scaleX = p_scaleX;
         m_scaleY = p_scaleY;
         
+        m_luminescence = new File(p_filesPaths.get(0));
+        
         m_buffer = p_buffer;
-        m_generator = new GeneratorManager(this, 1000, 350, new BigDecimal("300"), p_sampleXSize, p_sampleYSize);
-         
-        (new Thread(m_generator)).start();
+        
+        String qdsPath = p_filesPaths.get(1);
+        if (qdsPath.equals(""))
+        {
+            (new Thread(new GeneratorManager(this, 1000, 350, new BigDecimal("300"), p_sampleXSize, p_sampleYSize))).start();
+        }
+        else
+        {
+            try
+            {
+                (new Thread(new GeneratorManager(this, 1000, new File(qdsPath), new BigDecimal("300"), p_sampleXSize, p_sampleYSize))).start();
+            }
+            catch (DataFormatException|IOException ex)
+            {
+                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        
     }
     
     @Override

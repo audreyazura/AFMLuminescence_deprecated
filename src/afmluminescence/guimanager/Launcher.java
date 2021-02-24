@@ -16,6 +16,8 @@
  */
 package afmluminescence.guimanager;
 
+import net.opentsdb.tools.ArgP;
+
 /**
  *
  * @author Alban Lafuente
@@ -28,8 +30,40 @@ public class Launcher
      */
     public static void main(String[] args)
     {
-        CanvasManager absorberRepresentation = new CanvasManager();
-        ((CanvasManager) absorberRepresentation).startVisualizer();
+        final ArgP argParser = new ArgP();
+        argParser.addOption("--lum", "File containing the luminescence data.");
+        argParser.addOption("--QDs", "File containing the quantum dots size and position.");
+        argParser.addOption("--help", "The command you just used.");
+        
+        //parsing the args to get the options passed to the program
+        try
+	{
+	    args = argParser.parse(args);
+	}
+	catch (IllegalArgumentException e)
+	{
+	    System.err.println(e.getMessage());
+	    System.err.print(argParser.usage());
+	    System.exit(1);
+	}
+        
+        if (argParser.has("--help"))
+        {
+            //just print help message, not continuing execution
+            System.out.println(argParser.usage());
+        }
+        else
+        {
+            String[] arguments = new String[2];
+            
+            arguments[0] = argParser.get("--lum", "");
+            arguments[1] = argParser.get("--QDs", "");
+            
+            arguments[1] = "/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/QDList.csv";
+            
+            CanvasManager absorberRepresentation = new CanvasManager();
+            absorberRepresentation.startVisualizer(arguments);
+        }
     }
     
 }

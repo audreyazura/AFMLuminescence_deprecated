@@ -87,9 +87,9 @@ public class CanvasManager extends Application
         m_timePainter.fillText(time + " ps", 120, 20);
     }
     
-    public void startVisualizer()
+    public void startVisualizer(String[] args)
     {
-        launch();
+        launch(args);
     }
     
     synchronized public void reset()
@@ -112,7 +112,7 @@ public class CanvasManager extends Application
         DrawingBuffer buffer = new DrawingBuffer(scaleX, scaleY);
         m_buffer = buffer;
         
-        new ExecutionManager(buffer, m_sampleXSize, m_sampleYSize, scaleX, scaleY);
+        new ExecutionManager(buffer, getParameters().getRaw(), m_sampleXSize, m_sampleYSize, scaleX, scaleY);
         
         Canvas animationCanvas = new Canvas(m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
         m_canvasPainter = animationCanvas.getGraphicsContext2D();

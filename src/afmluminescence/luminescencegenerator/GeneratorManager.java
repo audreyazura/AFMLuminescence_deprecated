@@ -18,6 +18,11 @@ package afmluminescence.luminescencegenerator;
 
 import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
@@ -29,6 +34,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
+import java.util.zip.DataFormatException;
 
 /**
  *
@@ -41,21 +48,84 @@ public class GeneratorManager implements Runnable
     private final BigDecimal m_vth;
     private final ImageBuffer m_output;
     private final int m_nElectrons;
-    private final int m_nQDs;
+    private final List<QuantumDot> p_QDList = new ArrayList<>();
     
+    //a map of the abscissa, separated in column, containing sets of QD present at that abscissa
     private final HashMap<BigInteger, Set<QuantumDot>> m_map = new HashMap<>();
+    
+    //this thread Random Generator
+    private final PcgRSFast m_randomGenerator = new PcgRSFast();
+    
+    public GeneratorManager ()
+    {
+        m_sampleXSize = BigDecimal.ZERO;
+        m_sampleYSize = BigDecimal.ZERO;
+        m_vth = BigDecimal.ZERO;
+        m_output = null;
+        m_nElectrons = 0;
+    }
     
     public GeneratorManager (ImageBuffer p_buffer, int p_nElectron, int p_nQDs, BigDecimal p_temperature, BigDecimal p_sampleX, BigDecimal p_sampleY)
     {
         m_output = p_buffer;
         m_nElectrons = p_nElectron;
-        m_nQDs = p_nQDs;
         m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
         
         m_sampleXSize = p_sampleX;
         m_sampleYSize = p_sampleY;
+
+        //generating QDs
+        for (int i = 0 ; i < p_nQDs ; i += 1)
+        {
+            QuantumDot currentQD = generateRandomQD(m_randomGenerator, p_QDList);
+            p_QDList.add(currentQD);
+            addToMap(currentQD);
+        }
+        m_output.logQDs(p_QDList);
     }
     
+    public GeneratorManager (ImageBuffer p_buffer, int p_nElectron, File p_QDFile, BigDecimal p_temperature, BigDecimal p_sampleX, BigDecimal p_sampleY) throws DataFormatException, FileNotFoundException, IOException
+    {
+        m_output = p_buffer;
+        m_nElectrons = p_nElectron;
+        m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
+        
+        m_sampleXSize = p_sampleX;
+        m_sampleYSize = p_sampleY;
+
+        //generating QDs
+        String[] nameSplit = p_QDFile.getPath().split("\\.");
+        
+        if (!nameSplit[nameSplit.length-1].equals("csv"))
+        {
+            throw new DataFormatException();
+        }
+        
+        BufferedReader fileReader = new BufferedReader(new FileReader(p_QDFile));
+        Pattern numberRegex = Pattern.compile("^\\-?\\d+(\\.\\d+(e(\\+|\\-)\\d+)?)?");
+	
+	String line;
+	while (((line = fileReader.readLine()) != null))
+	{	    
+	    String[] lineSplit = line.strip().split(";");
+	    
+	    if(numberRegex.matcher(lineSplit[0]).matches())
+	    {
+		BigDecimal radius = formatBigDecimal(((new BigDecimal(lineSplit[0].strip())).divide(new BigDecimal("2"))).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                BigDecimal x = formatBigDecimal((new BigDecimal(lineSplit[1].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                BigDecimal y = formatBigDecimal((new BigDecimal(lineSplit[2].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                
+                QuantumDot currentQD = new QuantumDot(x, y, radius);
+                p_QDList.add(currentQD);
+                addToMap(currentQD);
+	    }
+        }
+    }
+    
+    /**
+     * Add the passed quantum dot to m_map at the right abscissa
+     * @param p_QDToAdd 
+     */
     private void addToMap(QuantumDot p_QDToAdd)
     {
         BigDecimal startAbscissa = (p_QDToAdd.getX().subtract(p_QDToAdd.getRadius())).scaleByPowerOfTen(PhysicsTools.UnitsPrefix.NANO.getScale());
@@ -79,7 +149,7 @@ public class GeneratorManager implements Runnable
         }
     }
     
-    private QuantumDot generateQD(PcgRSFast p_randomGenerator, List<QuantumDot> p_existingQDs)
+    private QuantumDot generateRandomQD(PcgRSFast p_randomGenerator, List<QuantumDot> p_existingQDs)
     {
         BigDecimal x;
         BigDecimal y;
@@ -129,20 +199,8 @@ public class GeneratorManager implements Runnable
     @Override
     public void run()
     {
-        PcgRSFast randomGenerator = new PcgRSFast();
-        
         BigDecimal x;
         BigDecimal y;
-
-        //generating QDs
-        List<QuantumDot> QDList = new ArrayList<>();
-        for (int i = 0 ; i < m_nQDs ; i += 1)
-        {
-            QuantumDot currentQD = generateQD(randomGenerator, QDList);
-            QDList.add(currentQD);
-            addToMap(currentQD);
-        }
-        m_output.logQDs(QDList);
 
         //generating electrons
         BigDecimal v_x;
@@ -150,11 +208,11 @@ public class GeneratorManager implements Runnable
         List<Electron> electronList = new ArrayList<>();
         for (int i = 0 ; i < m_nElectrons ; i += 1)
         {
-            x = formatBigDecimal((new BigDecimal(randomGenerator.nextDouble())).multiply(m_sampleXSize));
-            y = formatBigDecimal((new BigDecimal(randomGenerator.nextDouble())).multiply(m_sampleYSize));
+            x = formatBigDecimal((new BigDecimal(m_randomGenerator.nextDouble())).multiply(m_sampleXSize));
+            y = formatBigDecimal((new BigDecimal(m_randomGenerator.nextDouble())).multiply(m_sampleYSize));
             
-            v_x = formatBigDecimal((new BigDecimal(randomGenerator.nextGaussian())).multiply(m_vth));
-            v_y = formatBigDecimal((new BigDecimal(randomGenerator.nextGaussian())).multiply(m_vth));
+            v_x = formatBigDecimal((new BigDecimal(m_randomGenerator.nextGaussian())).multiply(m_vth));
+            v_y = formatBigDecimal((new BigDecimal(m_randomGenerator.nextGaussian())).multiply(m_vth));
             
             electronList.add(new Electron(x, y, v_x, v_y));
         }
@@ -211,8 +269,8 @@ public class GeneratorManager implements Runnable
                 timePassed = timePassed.add(timeStep);
                 m_output.logElectrons(currentELectronList);
                 m_output.logTime(timePassed);
-                m_output.logQDs(QDList);
-                for (QuantumDot QD: QDList)
+                m_output.logQDs(p_QDList);
+                for (QuantumDot QD: p_QDList)
                 {
                     QD.resetRecombine();
                 }

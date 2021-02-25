@@ -60,6 +60,7 @@ public class Launcher
             arguments[1] = argParser.get("--QDs", "");
             
 //            arguments[1] = "/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/QDList.csv";
+            arguments[1] = "/home/alafuente/ドキュメント/OkadaCollab/iii201028a_clean.csv";
             
             CanvasManager absorberRepresentation = new CanvasManager();
             absorberRepresentation.startVisualizer(arguments);

@@ -19,6 +19,7 @@ package afmluminescence.luminescencegenerator;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.math.BigDecimal;
+import java.math.MathContext;
 
 /**
  *
@@ -39,7 +40,8 @@ public class QuantumDot extends AbsorberObject
         
         //to be calculated later
         m_radius = p_radius;
-        m_energy = (new BigDecimal("0.354")).multiply(PhysicsTools.EV);
+//        m_energy = (new BigDecimal("1.1")).multiply(PhysicsTools.EV);
+        m_energy = ((new BigDecimal("1.1")).divide(p_radius.scaleByPowerOfTen(PhysicsTools.UnitsPrefix.NANO.getScale()).divide(new BigDecimal("11.91495737"), MathContext.DECIMAL128), MathContext.DECIMAL128)).multiply(PhysicsTools.EV);
         m_captureProbability = 0.01;
     }
     

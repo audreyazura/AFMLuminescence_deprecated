@@ -23,6 +23,7 @@ import afmluminescence.luminescencegenerator.GeneratorManager;
 import afmluminescence.luminescencegenerator.ImageBuffer;
 import afmluminescence.luminescencegenerator.QuantumDot;
 import afmluminescence.luminescencegenerator.ResultHandler;
+import com.sun.jdi.AbsentInformationException;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -125,9 +126,29 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
     @Override
     public void sendResults(HashMap<Electron, BigDecimal> p_result)
     {
+        List<BigDecimal> recombinationTimes = new ArrayList(p_result.values());
+        List<BigDecimal> recombinationEnergies = new ArrayList<>();
+        
         for (Electron el: p_result.keySet())
         {
-            System.out.println(el.hashCode() + " => " + p_result.get(el));
+            try
+            {
+                recombinationEnergies.add(el.getRecombinationEnergy());
+            }
+            catch (AbsentInformationException ex)
+            {
+                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        
+        SimulationWriter writer = new SimulationWriter(new ArrayList(recombinationTimes), new ArrayList(recombinationEnergies));
+        try
+        {
+            writer.saveToFile(new File("Results/TimeResolved.dat"), new File("Results/Spectra.dat"));
+        }
+        catch (IOException ex)
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 }

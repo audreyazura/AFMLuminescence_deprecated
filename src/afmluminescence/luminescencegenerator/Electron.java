@@ -18,6 +18,7 @@ package afmluminescence.luminescencegenerator;
 
 import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
+import com.sun.jdi.AbsentInformationException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -31,18 +32,39 @@ import org.nevec.rjm.BigDecimalMath;
  */
 public class Electron extends AbsorberObject
 {
+    private final int m_id;
+    
     private BigDecimal m_speedX;
     private BigDecimal m_speedY;
     
     private ElectronState m_state = ElectronState.FREE;
     private QuantumDot m_trapingDot = null;
     
-    public Electron (BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_speedX, BigDecimal p_speedY)
+    public Electron (int p_id, BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_speedX, BigDecimal p_speedY)
     {
+        m_id = p_id;
         m_positionX = p_positionX;
         m_positionY = p_positionY;
         m_speedX = p_speedX;
         m_speedY = p_speedY;
+    }
+    
+    public BigDecimal getRecombinationEnergy() throws AbsentInformationException
+    {
+        if (m_trapingDot != null)
+        {
+            return m_trapingDot.getEnergy();
+        }
+        else
+        {
+            throw new AbsentInformationException();
+        }
+    }
+    
+    @Override
+    public boolean equals (Object obj)
+    {
+        return getClass().equals(obj.getClass()) && hashCode() == obj.hashCode();
     }
     
     public boolean isFree()
@@ -53,6 +75,12 @@ public class Electron extends AbsorberObject
     public boolean isRecombined()
     {
         return m_state == ElectronState.RECOMBINED;
+    }
+    
+    @Override
+    public int hashCode()
+    {
+        return m_id;
     }
     
     public void stepInTime(BigDecimal p_timeStep, BigDecimal p_maxX, BigDecimal p_maxY, BigDecimal p_vth, HashMap<BigInteger, Set<QuantumDot>> p_map, PcgRSFast p_RNG)

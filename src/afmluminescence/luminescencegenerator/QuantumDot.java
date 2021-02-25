@@ -54,6 +54,11 @@ public class QuantumDot extends AbsorberObject
         return p_RNG.nextDouble() < m_captureProbability;
     }
     
+    public BigDecimal getEnergy()
+    {
+        return m_energy;
+    }
+    
     public BigDecimal getRadius()
     {
         return m_radius;
@@ -67,14 +72,12 @@ public class QuantumDot extends AbsorberObject
     //will calculate the probablity based on the electron and hole wave function
     synchronized public boolean recombine(PcgRSFast p_RNG)
     {
-        boolean didIt = p_RNG.nextDouble() < m_captureProbability;
-        
         if (!m_recombined)
         {
-            m_recombined = didIt;
+            m_recombined = p_RNG.nextDouble() < m_captureProbability;
         }
         
-        return didIt;
+        return m_recombined;
     }
     
     public void resetRecombine()

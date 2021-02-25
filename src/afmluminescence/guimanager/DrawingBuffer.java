@@ -104,7 +104,7 @@ public class DrawingBuffer
     {
         synchronized(m_timeLock)
         {
-            m_timePassed = (p_time.divide(PhysicsTools.UnitsPrefix.FEMTO.getMultiplier())).stripTrailingZeros().toPlainString();
+            m_timePassed = (p_time.divide(PhysicsTools.UnitsPrefix.PICO.getMultiplier())).stripTrailingZeros().toPlainString();
         }
     }
 }

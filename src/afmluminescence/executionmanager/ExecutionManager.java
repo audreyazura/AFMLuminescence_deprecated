@@ -22,10 +22,12 @@ import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.GeneratorManager;
 import afmluminescence.luminescencegenerator.ImageBuffer;
 import afmluminescence.luminescencegenerator.QuantumDot;
+import afmluminescence.luminescencegenerator.ResultHandler;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,7 +38,7 @@ import javafx.scene.paint.Color;
  *
  * @author audreyazura
  */
-public class ExecutionManager implements ImageBuffer
+public class ExecutionManager implements ImageBuffer, ResultHandler
 {
     private final BigDecimal m_scaleX;
     private final BigDecimal m_scaleY;
@@ -55,13 +57,13 @@ public class ExecutionManager implements ImageBuffer
         String qdsPath = p_filesPaths.get(1);
         if (qdsPath.equals(""))
         {
-            (new Thread(new GeneratorManager(this, 1000, 350, new BigDecimal("300"), p_sampleXSize, p_sampleYSize))).start();
+            (new Thread(new GeneratorManager(this, this, 1000, 350, new BigDecimal("300"), p_sampleXSize, p_sampleYSize))).start();
         }
         else
         {
             try
             {
-                (new Thread(new GeneratorManager(this, 1000, new File(qdsPath), new BigDecimal("300"), p_sampleXSize, p_sampleYSize))).start();
+                (new Thread(new GeneratorManager(this, this, 1000, new File(qdsPath), new BigDecimal("300"), p_sampleXSize, p_sampleYSize))).start();
             }
             catch (DataFormatException|IOException ex)
             {
@@ -118,5 +120,14 @@ public class ExecutionManager implements ImageBuffer
     public void logTime(BigDecimal p_time)
     {
         m_buffer.logTime(p_time);
+    }
+    
+    @Override
+    public void sendResults(HashMap<Electron, BigDecimal> p_result)
+    {
+        for (Electron el: p_result.keySet())
+        {
+            System.out.println(el.hashCode() + " => " + p_result.get(el));
+        }
     }
 }

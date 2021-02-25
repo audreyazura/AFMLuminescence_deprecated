@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -56,6 +57,8 @@ public class GeneratorManager implements Runnable
     //this thread Random Generator
     private final PcgRSFast m_randomGenerator = new PcgRSFast();
     
+    private final ResultHandler m_handler;
+    
     public GeneratorManager ()
     {
         m_sampleXSize = BigDecimal.ZERO;
@@ -63,11 +66,13 @@ public class GeneratorManager implements Runnable
         m_vth = BigDecimal.ZERO;
         m_output = null;
         m_nElectrons = 0;
+        m_handler = null;
     }
     
-    public GeneratorManager (ImageBuffer p_buffer, int p_nElectron, int p_nQDs, BigDecimal p_temperature, BigDecimal p_sampleX, BigDecimal p_sampleY)
+    public GeneratorManager (ImageBuffer p_buffer, ResultHandler p_handler, int p_nElectron, int p_nQDs, BigDecimal p_temperature, BigDecimal p_sampleX, BigDecimal p_sampleY)
     {
         m_output = p_buffer;
+        m_handler = p_handler;
         m_nElectrons = p_nElectron;
         m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
         
@@ -84,9 +89,10 @@ public class GeneratorManager implements Runnable
         m_output.logQDs(p_QDList);
     }
     
-    public GeneratorManager (ImageBuffer p_buffer, int p_nElectron, File p_QDFile, BigDecimal p_temperature, BigDecimal p_sampleX, BigDecimal p_sampleY) throws DataFormatException, FileNotFoundException, IOException
+    public GeneratorManager (ImageBuffer p_buffer, ResultHandler p_handler, int p_nElectron, File p_QDFile, BigDecimal p_temperature, BigDecimal p_sampleX, BigDecimal p_sampleY) throws DataFormatException, FileNotFoundException, IOException
     {
         m_output = p_buffer;
+        m_handler = p_handler;
         m_nElectrons = p_nElectron;
         m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
         
@@ -214,7 +220,7 @@ public class GeneratorManager implements Runnable
             v_x = formatBigDecimal((new BigDecimal(m_randomGenerator.nextGaussian())).multiply(m_vth));
             v_y = formatBigDecimal((new BigDecimal(m_randomGenerator.nextGaussian())).multiply(m_vth));
             
-            electronList.add(new Electron(x, y, v_x, v_y));
+            electronList.add(new Electron(i, x, y, v_x, v_y));
         }
         m_output.logElectrons(electronList);
         
@@ -247,7 +253,8 @@ public class GeneratorManager implements Runnable
         //calculation start!
         BigDecimal timePassed = BigDecimal.ZERO;
         m_output.logTime(timePassed);
-        ArrayList<Electron> currentELectronList;
+        List<Electron> currentELectronList;
+        HashMap<Electron, BigDecimal> recombinedElectrons = new HashMap<>();
         boolean allFinished = false;
         try
         {
@@ -255,6 +262,11 @@ public class GeneratorManager implements Runnable
             {
                 currentELectronList = new ArrayList<>();
                 allFinished = true;
+                
+                //advancing time logger (can be done before the calculation, the time logger is not taken into them)
+                timePassed = timePassed.add(timeStep);
+                
+                //calculating the electrons movement
                 for (int i = 0 ; i < numberOfChunks ; i += 1)
                 {
                     workerArray[i] = new Thread(moverArray[i]);
@@ -262,21 +274,47 @@ public class GeneratorManager implements Runnable
                 }
                 for (int i = 0 ; i < numberOfChunks ; i += 1)
                 {
+                    //waiting for the worker to finish
                     workerArray[i].join();
-                    currentELectronList.addAll(moverArray[i].getElectronList());
-                    allFinished &= moverArray[i].allRecombined();
+                    
+                    //adding the electrons to the list to be drawn
+                    List<Electron> finishedList = moverArray[i].getElectronList();
+                    currentELectronList.addAll(finishedList);
+                    
+                    //logging the recombined electrons
+                    boolean allRecombined = true;
+                    for (Electron electron: finishedList)
+                    {
+                        if (electron.isRecombined())
+                        {
+                            if (!recombinedElectrons.containsKey(electron))
+                            {
+                                recombinedElectrons.put(electron, timePassed);
+                            }
+                        }
+                        else
+                        {
+                            allRecombined = false;
+                        }
+                    }
+                    
+                    //updating the stopping condition
+                    allFinished &= allRecombined;
                 }
-                timePassed = timePassed.add(timeStep);
+                
+                //sending the new data to the visualisation interface 
                 m_output.logElectrons(currentELectronList);
                 m_output.logTime(timePassed);
                 m_output.logQDs(p_QDList);
+                
+                //cleaning the recombined QD
                 for (QuantumDot QD: p_QDList)
                 {
                     QD.resetRecombine();
                 }
             }
             
-            //log the recombination profile here by taking the energy of the QD the electrons recombined.
+            m_handler.sendResults(recombinedElectrons);
         }
         catch (InterruptedException ex)
         {

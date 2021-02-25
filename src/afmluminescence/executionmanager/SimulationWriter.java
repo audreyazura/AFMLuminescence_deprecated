@@ -59,10 +59,12 @@ public class SimulationWriter
             m_times.put(currentTime, nRecomb);
         }
         
-        //doing the same for the energies
+        //doing the same for the energies, in 10 intervals
         BigDecimal minEnergy = p_energiesList.get(0);
         BigDecimal maxEnergy = p_energiesList.get(p_energiesList.size() - 1);
-        BigDecimal energyInterval = (maxEnergy.subtract(minEnergy)).divide(BigDecimal.TEN, MathContext.DECIMAL128);
+        BigDecimal energyInterval = (maxEnergy.subtract(minEnergy)).divide(new BigDecimal("10"), MathContext.DECIMAL128);
+        int nInf = 0;
+        int nSup = 0;
         for (BigDecimal currentEnergy = minEnergy ; currentEnergy.compareTo(maxEnergy) == -1 ; currentEnergy = currentEnergy.add(energyInterval))
         {
             BigDecimal currentMax = currentEnergy.add(energyInterval);
@@ -70,12 +72,24 @@ public class SimulationWriter
             
             while (p_energiesList.size() > 0 && p_energiesList.get(0).compareTo(currentMax) <= 0)
             {
+                if (p_energiesList.get(0).compareTo((new BigDecimal("1.1")).multiply(PhysicsTools.EV)) <= 0)
+                {
+                    nInf += 1;
+                }
+                else
+                {
+                    nSup += 1;
+                }
+                
                 nEnergy += 1;
                 p_energiesList.remove(0);
             }
             
             m_energies.put(currentEnergy, nEnergy);
         }
+        
+        System.out.println(nInf);
+        System.out.println(nSup);
     }
     
     public void saveToFile(File timeFile, File energyFile) throws IOException
@@ -107,10 +121,11 @@ public class SimulationWriter
         energyWriter.write("Wavelength (nm)\tIntensity (cps)");
         for (BigDecimal energy: energySet)
         {
-            BigDecimal wavelengthNano = ((PhysicsTools.h.multiply(PhysicsTools.c)).divide(energy.multiply(PhysicsTools.EV))).divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier());
+            BigDecimal wavelengthNano = ((PhysicsTools.h.multiply(PhysicsTools.c)).divide(energy, MathContext.DECIMAL128)).divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
             
             energyWriter.newLine();
-            energyWriter.write(wavelengthNano.toPlainString() + "\t" + m_energies.get(energy));
+//            energyWriter.write(wavelengthNano.toPlainString() + "\t" + m_energies.get(energy));
+            energyWriter.write(energy.divide(PhysicsTools.EV, MathContext.DECIMAL128).toPlainString() + "\t" + m_energies.get(energy));
         }
         energyWriter.flush();
         energyWriter.close();

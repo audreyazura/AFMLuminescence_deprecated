@@ -17,7 +17,6 @@
 package afmluminescence.guimanager;
 
 import afmluminescence.executionmanager.ExecutionManager;
-import afmluminescence.luminescencegenerator.GeneratorManager;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -28,7 +27,6 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
-import afmluminescence.luminescencegenerator.ImageBuffer;
 import java.util.ArrayList;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -90,11 +88,6 @@ public class GUIManager extends Application
     public void startVisualizer(String[] args)
     {
         launch(args);
-    }
-    
-    synchronized public void reset()
-    {
-        m_canvasPainter.clearRect(0, 0, m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
     }
     
     @Override

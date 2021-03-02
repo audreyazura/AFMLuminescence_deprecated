@@ -17,6 +17,7 @@
 package afmluminescence.executionmanager;
 
 import afmluminescence.guimanager.DrawingBuffer;
+import afmluminescence.guimanager.GUIManager;
 import afmluminescence.guimanager.ObjectToDraw;
 import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.GeneratorManager;
@@ -24,7 +25,11 @@ import afmluminescence.luminescencegenerator.ImageBuffer;
 import afmluminescence.luminescencegenerator.QuantumDot;
 import afmluminescence.luminescencegenerator.ResultHandler;
 import com.sun.jdi.AbsentInformationException;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -33,6 +38,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.DataFormatException;
+import javafx.application.Platform;
+import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 
 /**
@@ -43,16 +50,18 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
 {
     private final BigDecimal m_scaleX;
     private final BigDecimal m_scaleY;
-    private final File m_luminescence;
     private final DrawingBuffer m_buffer;
+    private final GUIManager m_gui;
+    private final File m_luminescence;
     
-    public ExecutionManager (DrawingBuffer p_buffer, List<String> p_filesPaths, BigDecimal p_sampleXSize, BigDecimal p_sampleYSize, BigDecimal p_scaleX, BigDecimal p_scaleY)
+    public ExecutionManager (GUIManager p_gui, DrawingBuffer p_buffer, List<String> p_filesPaths, BigDecimal p_sampleXSize, BigDecimal p_sampleYSize, BigDecimal p_scaleX, BigDecimal p_scaleY)
     {
         m_scaleX = p_scaleX;
         m_scaleY = p_scaleY;
         
         m_luminescence = new File(p_filesPaths.get(0));
         
+        m_gui = p_gui;
         m_buffer = p_buffer;
         
         String qdsPath = p_filesPaths.get(1);
@@ -147,6 +156,67 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
             writer.saveToFile(new File("Results/TimeResolved.dat"), new File("Results/Spectra.dat"));
         }
         catch (IOException ex)
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        try
+        {
+            Runtime commandPrompt = Runtime.getRuntime();
+            commandPrompt.exec("gnuplot");
+            showResults(commandPrompt);
+        }
+        catch (IOException ex)
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.WARNING, "Gnuplot is missing.", ex);
+        }
+    }
+    
+    private void showResults (Runtime p_commandPrompt)
+    {
+        try
+        {
+            String spectraFile = "Results/Spectra.png";
+            String timeResolvedFile = "Results/TimeResolved.png";
+            
+            BufferedWriter gnuplotWriter = new BufferedWriter(new FileWriter("Results/.gnuplotScript.gp"));
+            gnuplotWriter.write("set terminal png");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("set ylabel \"Intensity (arb. units.)\"");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("set xlabel \"Wavelength (nm)\"");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("set output \"" + spectraFile + "\"");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("plot \"Results/Spectra.dat\" u 1:2 w line t \"Luminescence\"");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("unset output");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("set output \"" + timeResolvedFile + "\"");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("set xlabel \"Time (ns)\"");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("plot \"Results/TimeResolved.dat\" u ($1/1000):2 w points t \"Time Resolved Luminescence\"");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("unset output");
+            gnuplotWriter.flush();
+            gnuplotWriter.close();
+
+            p_commandPrompt.exec("gnuplot Results/.gnuplotScript.gp").waitFor();
+
+            Platform.runLater(() ->
+            {
+                try
+                {
+                    m_gui.showPicture(new Image(new FileInputStream(spectraFile)), "Spectra", "left");
+                    m_gui.showPicture(new Image(new FileInputStream(timeResolvedFile)), "Time Resolved", "right");
+                } catch (FileNotFoundException ex)
+                {
+                    Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+        } 
+        catch (IOException|InterruptedException ex)
         {
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
         }

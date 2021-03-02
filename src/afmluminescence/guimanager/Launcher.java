@@ -59,10 +59,10 @@ public class Launcher
             arguments[0] = argParser.get("--lum", "");
             arguments[1] = argParser.get("--QDs", "");
             
-//            arguments[1] = "/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/QDList.csv";
-            arguments[1] = "/home/alafuente/ドキュメント/OkadaCollab/iii201028a_clean.csv";
+            arguments[1] = "/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/QDList.csv";
+//            arguments[1] = "/home/alafuente/ドキュメント/OkadaCollab/iii201028a_clean.csv";
             
-            CanvasManager absorberRepresentation = new CanvasManager();
+            GUIManager absorberRepresentation = new GUIManager();
             absorberRepresentation.startVisualizer(arguments);
         }
     }

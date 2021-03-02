@@ -30,7 +30,10 @@ import javafx.stage.Stage;
 import java.util.ArrayList;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.text.Font;
+import javafx.stage.Screen;
 import javafx.util.Duration;
 
 /**
@@ -90,6 +93,26 @@ public class GUIManager extends Application
         launch(args);
     }
     
+    public void showPicture(Image p_picture, String p_title, String p_position)
+    {
+        ImageView pictureViewer = new ImageView(p_picture);
+        
+        Group pictureRoot = new Group(pictureViewer);
+        Scene pictureScene = new Scene(pictureRoot);
+        
+        double shift = Screen.getPrimary().getBounds().getWidth()/4;
+        if (p_position.equals("left"))
+        {
+            shift *= -1;
+        }
+        
+        Stage pictureStage = new Stage();
+        pictureStage.setTitle(p_title);
+        pictureStage.setScene(pictureScene);
+        pictureStage.show();
+        pictureStage.setX(pictureStage.getX() + shift);
+    }
+    
     @Override
     public void start (Stage stage)
     {
@@ -105,7 +128,7 @@ public class GUIManager extends Application
         DrawingBuffer buffer = new DrawingBuffer(scaleX, scaleY);
         m_buffer = buffer;
         
-        new ExecutionManager(buffer, getParameters().getRaw(), m_sampleXSize, m_sampleYSize, scaleX, scaleY);
+        new ExecutionManager(this, buffer, getParameters().getRaw(), m_sampleXSize, m_sampleYSize, scaleX, scaleY);
         
         Canvas animationCanvas = new Canvas(m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
         m_canvasPainter = animationCanvas.getGraphicsContext2D();

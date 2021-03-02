@@ -203,6 +203,7 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
             gnuplotWriter.close();
 
             p_commandPrompt.exec("gnuplot Results/.gnuplotScript.gp").waitFor();
+            p_commandPrompt.exec("rm Results/.gnuplotScript.gp");
 
             Platform.runLater(() ->
             {

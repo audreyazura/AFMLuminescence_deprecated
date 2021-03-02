@@ -124,8 +124,8 @@ public class SimulationWriter
             BigDecimal wavelengthNano = ((PhysicsTools.h.multiply(PhysicsTools.c)).divide(energy, MathContext.DECIMAL128)).divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
             
             energyWriter.newLine();
-//            energyWriter.write(wavelengthNano.toPlainString() + "\t" + m_energies.get(energy));
-            energyWriter.write(energy.divide(PhysicsTools.EV, MathContext.DECIMAL128).toPlainString() + "\t" + m_energies.get(energy));
+            energyWriter.write(wavelengthNano.toPlainString() + "\t" + m_energies.get(energy));
+//            energyWriter.write(energy.divide(PhysicsTools.EV, MathContext.DECIMAL128).toPlainString() + "\t" + m_energies.get(energy));
         }
         energyWriter.flush();
         energyWriter.close();

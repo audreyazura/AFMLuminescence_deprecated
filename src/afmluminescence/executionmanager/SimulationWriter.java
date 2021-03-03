@@ -62,7 +62,7 @@ public class SimulationWriter
         //doing the same for the energies, in 10 intervals
         BigDecimal minEnergy = p_energiesList.get(0);
         BigDecimal maxEnergy = p_energiesList.get(p_energiesList.size() - 1);
-        BigDecimal energyInterval = (maxEnergy.subtract(minEnergy)).divide(new BigDecimal("10"), MathContext.DECIMAL128);
+        BigDecimal energyInterval = (maxEnergy.subtract(minEnergy)).divide(new BigDecimal("50"), MathContext.DECIMAL128);
         int nInf = 0;
         int nSup = 0;
         for (BigDecimal currentEnergy = minEnergy ; currentEnergy.compareTo(maxEnergy) == -1 ; currentEnergy = currentEnergy.add(energyInterval))

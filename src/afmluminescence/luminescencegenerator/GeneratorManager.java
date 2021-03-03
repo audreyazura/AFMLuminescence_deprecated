@@ -115,13 +115,14 @@ public class GeneratorManager implements Runnable
 	{	    
 	    String[] lineSplit = line.strip().split(";");
 	    
-	    if(numberRegex.matcher(lineSplit[0]).matches())
+            if(numberRegex.matcher(lineSplit[0]).matches())
 	    {
-		BigDecimal radius = formatBigDecimal(((new BigDecimal(lineSplit[0].strip())).divide(new BigDecimal("2"))).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
-                BigDecimal x = formatBigDecimal((new BigDecimal(lineSplit[1].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
-                BigDecimal y = formatBigDecimal((new BigDecimal(lineSplit[2].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+		BigDecimal x = formatBigDecimal((new BigDecimal(lineSplit[0].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                BigDecimal y = formatBigDecimal((new BigDecimal(lineSplit[1].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                BigDecimal radius = formatBigDecimal(((new BigDecimal(lineSplit[2].strip())).divide(new BigDecimal("2"), MathContext.DECIMAL128)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                BigDecimal height = formatBigDecimal((new BigDecimal(lineSplit[3].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
                 
-                QuantumDot currentQD = new QuantumDot(x, y, radius);
+                QuantumDot currentQD = new QuantumDot(x, y, radius, height);
                 p_QDList.add(currentQD);
                 addToMap(currentQD);
 	    }
@@ -171,7 +172,7 @@ public class GeneratorManager implements Runnable
 
         }while (radius.compareTo(BigDecimal.ZERO) <= 0);
 
-        createdQD = new QuantumDot(x, y, radius);
+        createdQD = new QuantumDot(x, y, radius, radius);
         
         while(!validPosition(createdQD, p_existingQDs))
         {
@@ -184,7 +185,7 @@ public class GeneratorManager implements Runnable
 
             }while (radius.compareTo(BigDecimal.ZERO) <= 0);
             
-            createdQD = new QuantumDot(x, y, radius);
+            createdQD = new QuantumDot(x, y, radius, radius);
         }
         
         return createdQD;

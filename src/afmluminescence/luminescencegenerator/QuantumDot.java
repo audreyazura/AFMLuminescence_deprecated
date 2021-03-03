@@ -33,15 +33,20 @@ public class QuantumDot extends AbsorberObject
     private boolean m_recombined = false;
     
     //ΔEg(InAs/GaAs) = 1.1 eV
-    public QuantumDot (BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_radius)
+    public QuantumDot (BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_radius, BigDecimal p_height)
     {
+        BigDecimal two = new BigDecimal("2");
+        BigDecimal three = new BigDecimal("3");
+        
         m_positionX = p_positionX;
         m_positionY = p_positionY;
         
         //to be calculated later
         m_radius = p_radius;
+        
+        BigDecimal characteristicLength = ((p_radius.multiply(two)).add(p_height)).divide(three, MathContext.DECIMAL128);
 //        m_energy = (new BigDecimal("1.1")).multiply(PhysicsTools.EV);
-        m_energy = ((new BigDecimal("1.1")).divide(p_radius.scaleByPowerOfTen(PhysicsTools.UnitsPrefix.NANO.getScale()).divide(new BigDecimal("11.91495737"), MathContext.DECIMAL128), MathContext.DECIMAL128)).multiply(PhysicsTools.EV);
+        m_energy = PhysicsTools.Materials.INAS.getBaseBandgapSI().add((three.multiply(PhysicsTools.hbar.pow(2)).multiply(PhysicsTools.PI.pow(2))).divide(two.multiply(PhysicsTools.Materials.INAS.getElectronEffectiveMassSI()).multiply(characteristicLength.pow(2)), MathContext.DECIMAL128));
         m_captureProbability = 0.01;
     }
     

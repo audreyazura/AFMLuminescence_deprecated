@@ -20,6 +20,7 @@ import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.math.BigDecimal;
 import java.math.MathContext;
+import org.nevec.rjm.BigDecimalMath;
 
 /**
  *
@@ -27,7 +28,6 @@ import java.math.MathContext;
  */
 public class QuantumDot extends AbsorberObject
 {
-    private final double m_captureProbability;
     private final BigDecimal m_energy;
     private final BigDecimal m_radius;
     private boolean m_recombined = false;
@@ -37,28 +37,45 @@ public class QuantumDot extends AbsorberObject
     {
         BigDecimal two = new BigDecimal("2");
         BigDecimal three = new BigDecimal("3");
+        BigDecimal pi = BigDecimalMath.pi(MathContext.DECIMAL128);
+        PhysicsTools.Materials material = PhysicsTools.Materials.INAS;
         
         m_positionX = p_positionX;
         m_positionY = p_positionY;
         
-        //to be calculated later
         m_radius = p_radius;
         
+        //at the moment, approximation of energy modeling the QD as a cube with side length L = (2*radius + height)/3
         BigDecimal characteristicLength = ((p_radius.multiply(two)).add(p_height)).divide(three, MathContext.DECIMAL128);
-//        m_energy = (new BigDecimal("1.1")).multiply(PhysicsTools.EV);
-        m_energy = PhysicsTools.Materials.INAS.getBaseBandgapSI().add((three.multiply(PhysicsTools.hbar.pow(2)).multiply(PhysicsTools.PI.pow(2))).divide(two.multiply(PhysicsTools.Materials.INAS.getElectronEffectiveMassSI()).multiply(characteristicLength.pow(2)), MathContext.DECIMAL128));
-        m_captureProbability = 0.01;
+        m_energy = material.getBaseBandgapSI().add((three.multiply(PhysicsTools.hbar.pow(2)).multiply(pi.pow(2))).divide(two.multiply(material.getElectronEffectiveMassSI()).multiply(characteristicLength.pow(2)), MathContext.DECIMAL128));
     }
     
-    synchronized public boolean capture(PcgRSFast p_RNG)
+    /**
+     * The capture probability depends on many parameters and demand to be further investigate.
+     * At the moment, it is approximated as the overlapping between the QD and the circle containing the positions the electron can reach
+     * See here for the calculation of the overlap: https://www.xarg.org/2016/07/calculate-the-intersection-area-of-two-circles/
+     * @param p_RNG the random number generator
+     * @param electronDistance the distance between the center of the QD and electron position
+     * @param electronSpan the circle containing the position the electron can reach
+     * @return whether the electron has been captured or not
+     */
+    synchronized public boolean capture(PcgRSFast p_RNG, BigDecimal electronDistance, BigDecimal electronSpan)
     {
-        return p_RNG.nextDouble() < m_captureProbability;
+//        BigDecimal triangleBase = (m_radius.pow(2).add(electronDistance.pow(2)).subtract(electronSpan.pow(2))).divide(electronDistance.multiply(new BigDecimal("2")), MathContext.DECIMAL128);
+//        if (triangleBase.compareTo(BigDecimal.ZERO) < 0)
+//        {
+//            System.err.println("PROBLEM!!!!!!!!");
+//        }
+        
+        double captureProba = 0.01;
+        
+        return p_RNG.nextDouble() < captureProba;
     }
     
     //will calculate probability based on phonon density
     synchronized public boolean escape(PcgRSFast p_RNG)
     {
-        return p_RNG.nextDouble() < m_captureProbability;
+        return p_RNG.nextDouble() < 0.01;
     }
     
     public BigDecimal getEnergy()
@@ -81,7 +98,7 @@ public class QuantumDot extends AbsorberObject
     {
         if (!m_recombined)
         {
-            m_recombined = p_RNG.nextDouble() < m_captureProbability;
+            m_recombined = p_RNG.nextDouble() < 0.01;
         }
         
         return m_recombined;

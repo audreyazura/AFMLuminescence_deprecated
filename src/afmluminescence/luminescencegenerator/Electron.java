@@ -116,9 +116,10 @@ public class Electron extends AbsorberObject
                 
                 for (QuantumDot QD: atRangeDots)
                 {
-                    if ((getDistance(QD.getX(), QD.getY()).subtract(QD.getRadius())).compareTo(electronVision) <= 0)
+                    BigDecimal distance = getDistance(QD.getX(), QD.getY()).subtract(QD.getRadius());
+                    if (distance.compareTo(electronVision) <= 0)
                     {
-                        if (QD.capture(p_RNG))
+                        if (QD.capture(p_RNG, distance, electronVision))
                         {
                             m_state = ElectronState.CAPTURED;
                             m_trapingDot = QD;

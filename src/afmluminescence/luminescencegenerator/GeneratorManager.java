@@ -127,6 +127,8 @@ public class GeneratorManager implements Runnable
                 addToMap(currentQD);
 	    }
         }
+        
+        m_output.logQDs(p_QDList);
     }
     
     /**

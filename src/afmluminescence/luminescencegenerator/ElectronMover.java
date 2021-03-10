@@ -71,7 +71,7 @@ public class ElectronMover implements Runnable
     {
         for (Electron curentElectron: m_electronList)
         {
-            curentElectron.stepInTime(m_timeStep, m_sampleXSize, m_sampleYSize, m_vth, m_QDMap, m_randomGenerator);
+            curentElectron.move(m_timeStep, m_sampleXSize, m_sampleYSize, m_vth, m_QDMap, m_randomGenerator);
         }
     }
 }

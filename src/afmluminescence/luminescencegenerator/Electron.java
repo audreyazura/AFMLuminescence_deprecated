@@ -83,7 +83,7 @@ public class Electron extends AbsorberObject
         return m_id;
     }
     
-    public void stepInTime(BigDecimal p_timeStep, BigDecimal p_maxX, BigDecimal p_maxY, BigDecimal p_vth, HashMap<BigInteger, Set<QuantumDot>> p_map, PcgRSFast p_RNG)
+    public void move(BigDecimal p_timeStep, BigDecimal p_maxX, BigDecimal p_maxY, BigDecimal p_vth, HashMap<BigInteger, Set<QuantumDot>> p_map, PcgRSFast p_RNG)
     {
         /**
          * moving the electron if it hasn't been captured or hasn't recombined

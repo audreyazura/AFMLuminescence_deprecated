@@ -136,30 +136,6 @@ public class QuantumDot extends AbsorberObject
         BigDecimal CBOffset = (new BigDecimal("0.7")).multiply(PhysicsTools.EV); //from https://aip.scitation.org/doi/abs/10.1063/1.125965, make it into PhysicalTools as a new enum, Metamaterials
         BigDecimal u02 = PhysicsTools.Materials.INAS.getElectronEffectiveMassSI().multiply(size.pow(2)).multiply(CBOffset).divide(two.multiply(PhysicsTools.hbar.pow(2)), MathContext.DECIMAL128);
         
-//        BigDecimal vi = new BigDecimal(Math.random()*Math.PI);
-//        BigDecimal error = new BigDecimal("1e-10");
-//        
-//        BigDecimal vprev = BigDecimal.ZERO;
-//        int counter = 0;
-//        do
-//        {
-//            System.out.println(counter);
-//            vprev = vi;
-//            
-//            BigDecimal fvi = (vi.pow(2).multiply(BigDecimal.ONE.add(BigDecimalMath.tan(vi).pow(2)))).subtract(u02);
-//            System.out.println(counter);
-//            BigDecimal fderivvi = two.multiply(vi).multiply(BigDecimal.ONE.add(vi.multiply(BigDecimalMath.tan(vi)).divide(BigDecimalMath.cos(vi).pow(2), MathContext.DECIMAL128)).add(BigDecimalMath.tan(vi).pow(2)));
-//            
-//            vi = (vprev.subtract(fvi.divide(fderivvi, MathContext.DECIMAL128))).abs();
-//            while (vi.compareTo(halfpi) >= 0)
-//            {
-//                //vi has to be between 0 and pi/2
-//                vi = vi.subtract(halfpi);
-//            }
-//            
-//            counter += 1;
-//            System.out.println(counter);
-//        }while(counter <= 10 && (vprev.subtract(vi)).abs().compareTo(error) >= 0);
         
         double vi = Math.random()*Math.PI;
         double error = 1E-10;

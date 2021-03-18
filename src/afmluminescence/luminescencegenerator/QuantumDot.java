@@ -32,13 +32,17 @@ public class QuantumDot extends AbsorberObject
 {
     private final BigDecimal m_energy;
     private final BigDecimal m_radius;
+    private final double m_escapeProbability;
+    private final double m_recombinationProbability;
     private boolean m_recombined = false;
     
     //ΔEg(InAs/GaAs) ~ 1.1 eV
     public QuantumDot (BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_radius, BigDecimal p_height)
     {
         BigDecimal two = new BigDecimal("2");
-        PhysicsTools.Materials material = PhysicsTools.Materials.INAS;
+        BigDecimal eight = new BigDecimal("8");
+        PhysicsTools.Materials QDMaterial = PhysicsTools.Materials.INAS;
+        PhysicsTools.Materials hostMaterial = PhysicsTools.Materials.GAAS;
         
         m_positionX = p_positionX;
         m_positionY = p_positionY;
@@ -46,13 +50,40 @@ public class QuantumDot extends AbsorberObject
         m_radius = p_radius;
         BigDecimal equivalentSquareSide = m_radius.multiply(BigDecimalMath.sqrt(BigDecimalMath.pi(MathContext.DECIMAL128), MathContext.DECIMAL128));
         
-        BigDecimal energyPlane = (energyParameter(equivalentSquareSide).divide(equivalentSquareSide, MathContext.DECIMAL128)).pow(2);
-        BigDecimal energyHeight = (energyParameter(p_height).divide(p_height, MathContext.DECIMAL128)).pow(2);
-        m_energy = material.getBaseBandgapSI().add((two.multiply(PhysicsTools.hbar.pow(2)).divide(material.getElectronEffectiveMassSI(), MathContext.DECIMAL128)).multiply((energyPlane.multiply(two)).add(energyHeight)));
+        BigDecimal CBOffset = (new BigDecimal("0.7")).multiply(PhysicsTools.EV); //from https://aip.scitation.org/doi/abs/10.1063/1.125965, make it into PhysicalTools as a new enum, Metamaterials
+//        BigDecimal energyPlaneElectron = (energyParameter(equivalentSquareSide, CBOffset, QDMaterial.getElectronEffectiveMassSI()).divide(equivalentSquareSide, MathContext.DECIMAL128)).pow(2);
+//        BigDecimal energyHeightElectron = (energyParameter(p_height, CBOffset, QDMaterial.getElectronEffectiveMassSI()).divide(p_height, MathContext.DECIMAL128)).pow(2);
+//        BigDecimal electronConfinementEnergy = (two.multiply(PhysicsTools.hbar.pow(2)).divide(QDMaterial.getElectronEffectiveMassSI(), MathContext.DECIMAL128)).multiply((energyPlaneElectron.multiply(two)).add(energyHeightElectron));
+        BigDecimal electronOscillatorPlane = BigDecimalMath.sqrt(eight.multiply(CBOffset).divide(QDMaterial.getElectronEffectiveMassSI().multiply(m_radius.pow(2)), MathContext.DECIMAL128), MathContext.DECIMAL128);
+        BigDecimal electronOscillatorHeight = BigDecimalMath.sqrt(eight.multiply(CBOffset).divide(QDMaterial.getElectronEffectiveMassSI().multiply(p_height.pow(2)), MathContext.DECIMAL128), MathContext.DECIMAL128);
+        BigDecimal electronConfinementEnergy = PhysicsTools.hbar.multiply(electronOscillatorPlane.add(electronOscillatorHeight)).divide(two);
+
+        BigDecimal VBOffset = hostMaterial.getBaseBandgapSI().subtract(QDMaterial.getBaseBandgapSI()).subtract(CBOffset);
+//        BigDecimal energyPlaneHole = (energyParameter(equivalentSquareSide, VBOffset, QDMaterial.getHoleEffectiveMassSI()).divide(equivalentSquareSide, MathContext.DECIMAL128)).pow(2);
+//        BigDecimal energyHeightHole = (energyParameter(p_height, VBOffset, QDMaterial.getHoleEffectiveMassSI()).divide(p_height, MathContext.DECIMAL128)).pow(2);
+//        BigDecimal holeConfinementEnergy = (two.multiply(PhysicsTools.hbar.pow(2)).divide(QDMaterial.getHoleEffectiveMassSI(), MathContext.DECIMAL128)).multiply((energyPlaneHole.multiply(two)).add(energyHeightHole));
+        BigDecimal holeOscillatorPlane = BigDecimalMath.sqrt(eight.multiply(VBOffset).divide(QDMaterial.getHoleEffectiveMassSI().multiply(m_radius.pow(2)), MathContext.DECIMAL128), MathContext.DECIMAL128);
+        BigDecimal holeOscillatorHeight = BigDecimalMath.sqrt(eight.multiply(VBOffset).divide(QDMaterial.getHoleEffectiveMassSI().multiply(p_height.pow(2)), MathContext.DECIMAL128), MathContext.DECIMAL128);
+        BigDecimal holeConfinementEnergy = PhysicsTools.hbar.multiply(holeOscillatorPlane.add(holeOscillatorHeight)).divide(two);
+
+        m_energy = QDMaterial.getBaseBandgapSI().add(electronConfinementEnergy).add(holeConfinementEnergy);
+        System.out.println(m_energy.divide(PhysicsTools.EV, MathContext.DECIMAL128));
+        //System.out.println(hostMaterial.getBaseBandgap() + "\t" + (QDMaterial.getBaseBandgapSI().add(electronConfinementEnergy).add(VBOffset)).divide(PhysicsTools.EV, MathContext.DECIMAL128));
         
         //at the moment, approximation of energy modeling the QD as a cube with side length L = (2*radius + height)/3
 //        BigDecimal characteristicLength = ((p_radius.multiply(two)).add(p_height)).divide(three, MathContext.DECIMAL128);
-//        m_energy = material.getBaseBandgapSI().add((three.multiply(PhysicsTools.hbar.pow(2)).multiply(pi.pow(2))).divide(two.multiply(material.getElectronEffectiveMassSI()).multiply(characteristicLength.pow(2)), MathContext.DECIMAL128));
+//        m_energy = material.getBaseBandgapSI().add((three.multiply(PhysicsTools.hbar.pow(2)).multiply(pi.pow(2))).divide(two.multiply(material.getElectronEffectiveMassSI()).multiply(characteristicLength.pow(2)), MathContext.DECIMAL128)); 
+
+        BigDecimal minPhononEnergy = CBOffset.subtract(electronConfinementEnergy);
+        if (minPhononEnergy.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            minPhononEnergy = BigDecimal.ZERO;
+        }
+//        System.out.println(minPhononEnergy.divide(PhysicsTools.EV, MathContext.DECIMAL128));
+        BigDecimal minPhotonEnergy = hostMaterial.getBaseBandgapSI().add(minPhononEnergy);
+        
+        m_escapeProbability = 0.01;
+        m_recombinationProbability = 0.01;
     }
     
     /**
@@ -129,43 +160,57 @@ public class QuantumDot extends AbsorberObject
         return p_RNG.nextDouble() < captureProba;
     }
     
-    private BigDecimal energyParameter (BigDecimal size)
+    /**
+     * See https://en.wikipedia.org/wiki/Finite_potential_well
+     * Find v_0 using Newton's Method with the equation sqrt(u0^2 - v0^2) = v0*tan(v0)
+     * Solved the equation squared in order to avoid the sqrt, since we want 0 < v0 < pi/2 anyway
+     * @param size
+     * @return 
+     */
+    private BigDecimal energyParameter (BigDecimal size, BigDecimal bandOffset, BigDecimal effectiveMass)
     {
-        BigDecimal two = new BigDecimal(2);
-        BigDecimal halfpi = BigDecimalMath.pi(MathContext.DECIMAL128).divide(two, MathContext.DECIMAL128);
-        BigDecimal CBOffset = (new BigDecimal("0.7")).multiply(PhysicsTools.EV); //from https://aip.scitation.org/doi/abs/10.1063/1.125965, make it into PhysicalTools as a new enum, Metamaterials
-        BigDecimal u02 = PhysicsTools.Materials.INAS.getElectronEffectiveMassSI().multiply(size.pow(2)).multiply(CBOffset).divide(two.multiply(PhysicsTools.hbar.pow(2)), MathContext.DECIMAL128);
+        double halfpi = (BigDecimalMath.pi(MathContext.DECIMAL128).divide(new BigDecimal(2), MathContext.DECIMAL128)).doubleValue();
+        double u02 = (effectiveMass.multiply(size.pow(2)).multiply(bandOffset).divide((new BigDecimal(2)).multiply(PhysicsTools.hbar.pow(2)), MathContext.DECIMAL128)).doubleValue();
         
+        double vtan = Math.random()*Math.PI/2;
+        while (u02 - Math.pow(vtan, 2) < 0)
+        {
+            vtan = Math.random()*Math.PI/2;
+        }
+        double error = 1E-50;
         
-        double vi = Math.random()*Math.PI;
-        double error = 1E-10;
-        
-        double vprev = 0;
+        double vprevtan = 0;
         int counter = 0;
         do
         {
-            vprev = vi;
+            vprevtan = vtan;
+            double tangent = Math.tan(vtan);
             
-            double fvi = Math.pow(vi, 2) * (1 + Math.pow(Math.tan(vi), 2)) - u02.doubleValue();
-            double fderivvi = 2 * vi * (1 + (vi * Math.tan(vi) / (Math.pow(Math.cos(vi), 2))) + Math.pow(Math.tan(vi), 2));
+            double fvi = functionToOptimize(vtan) - u02;
+            double fderivvi = 2 * vtan * (1 + (vtan * tangent / (Math.pow(Math.cos(vtan), 2))) + Math.pow(tangent, 2));
             
-            vi = Math.abs(vprev - (fvi / fderivvi));
-            while (vi >= halfpi.doubleValue())
+            vtan = Math.abs(vprevtan - (fvi / fderivvi));
+            while (vtan >= halfpi)
             {
                 //vi has to be between 0 and pi/2
-                vi = vi - halfpi.doubleValue();
+                vtan = vtan - halfpi;
             }
             
             counter += 1;
-        }while(counter <= 10 && Math.abs(vprev - vi) >= error);
-
-        return new BigDecimal(vi);
+        }while(counter <= 100 && Math.abs(functionToOptimize(vtan) - u02) >= error);
+        
+        return new BigDecimal(vtan);
+    }
+    
+    private double functionToOptimize(double v)
+    {
+        return Math.pow(v, 2) * (1 + Math.pow(Math.tan(v), 2));
     }
     
     //will calculate probability based on phonon density
     synchronized public boolean escape(PcgRSFast p_RNG)
     {
-        return p_RNG.nextDouble() < 0.01;
+        return p_RNG.nextDouble() < m_escapeProbability;
     }
     
     public BigDecimal getEnergy()
@@ -188,7 +233,7 @@ public class QuantumDot extends AbsorberObject
     {
         if (!m_recombined)
         {
-            m_recombined = p_RNG.nextDouble() < 0.01;
+            m_recombined = p_RNG.nextDouble() < m_recombinationProbability;
         }
         
         return m_recombined;

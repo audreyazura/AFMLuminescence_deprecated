@@ -59,7 +59,7 @@ public class SimulationWriter
             m_times.put(currentTime, nRecomb);
         }
         
-        //doing the same for the energies, in 10 intervals
+        //doing the same for the energies, in 50 intervals
         BigDecimal minEnergy = p_energiesList.get(0);
         BigDecimal maxEnergy = p_energiesList.get(p_energiesList.size() - 1);
         BigDecimal energyInterval = (maxEnergy.subtract(minEnergy)).divide(new BigDecimal("50"), MathContext.DECIMAL128);
@@ -72,7 +72,7 @@ public class SimulationWriter
             
             while (p_energiesList.size() > 0 && p_energiesList.get(0).compareTo(currentMax) <= 0)
             {
-                if (p_energiesList.get(0).compareTo((new BigDecimal("1.1")).multiply(PhysicsTools.EV)) <= 0)
+                if (p_energiesList.get(0).compareTo((new BigDecimal("1.0")).multiply(PhysicsTools.EV)) <= 0)
                 {
                     nInf += 1;
                 }
@@ -88,8 +88,8 @@ public class SimulationWriter
             m_energies.put(currentEnergy, nEnergy);
         }
         
-        System.out.println(nInf);
-        System.out.println(nSup);
+        System.out.println("Recomined with energies smaller than 1.0 eV: " + nInf);
+        System.out.println("Recomined with energies higher than 1.0 eV: " + nSup);
     }
     
     public void saveToFile(File timeFile, File energyFile) throws IOException
@@ -115,7 +115,7 @@ public class SimulationWriter
         timeWriter.flush();
         timeWriter.close();
         
-        //writing energies
+        //writing wavelength calculated from energies
         Set<BigDecimal> energySet = new TreeSet(m_energies.keySet());
         BufferedWriter energyWriter = new BufferedWriter(new FileWriter(energyFile));
         energyWriter.write("Wavelength (nm)\tIntensity (cps)");

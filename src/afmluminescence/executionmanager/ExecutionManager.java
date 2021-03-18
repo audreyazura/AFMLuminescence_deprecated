@@ -73,7 +73,7 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
         {
             try
             {
-                (new Thread(new GeneratorManager(this, this, 1000, new File(qdsPath), new BigDecimal("300"), p_sampleXSize, p_sampleYSize))).start();
+                (new Thread(new GeneratorManager(this, this, 10000, new File(qdsPath), new BigDecimal("300"), p_sampleXSize, p_sampleYSize))).start();
             }
             catch (DataFormatException|IOException ex)
             {

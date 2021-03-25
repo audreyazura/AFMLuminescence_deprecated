@@ -48,7 +48,7 @@ public class QuantumDot extends AbsorberObject
         m_positionY = p_positionY;
         
         m_radius = p_radius;
-        BigDecimal equivalentSquareSide = m_radius.multiply(BigDecimalMath.sqrt(BigDecimalMath.pi(MathContext.DECIMAL128), MathContext.DECIMAL128));
+//        BigDecimal equivalentSquareSide = m_radius.multiply(BigDecimalMath.sqrt(BigDecimalMath.pi(MathContext.DECIMAL128), MathContext.DECIMAL128));
         
         BigDecimal CBOffset = (new BigDecimal("0.7")).multiply(PhysicsTools.EV); //from https://aip.scitation.org/doi/abs/10.1063/1.125965, make it into PhysicalTools as a new enum, Metamaterials
 //        BigDecimal energyPlaneElectron = (energyParameter(equivalentSquareSide, CBOffset, QDMaterial.getElectronEffectiveMassSI()).divide(equivalentSquareSide, MathContext.DECIMAL128)).pow(2);
@@ -67,13 +67,9 @@ public class QuantumDot extends AbsorberObject
         BigDecimal holeConfinementEnergy = PhysicsTools.hbar.multiply(holeOscillatorPlane.add(holeOscillatorHeight)).divide(two);
 
         m_energy = QDMaterial.getBaseBandgapSI().add(electronConfinementEnergy).add(holeConfinementEnergy);
-        System.out.println(m_energy.divide(PhysicsTools.EV, MathContext.DECIMAL128));
+        //System.out.println(m_energy.divide(PhysicsTools.EV, MathContext.DECIMAL128));
         //System.out.println(hostMaterial.getBaseBandgap() + "\t" + (QDMaterial.getBaseBandgapSI().add(electronConfinementEnergy).add(VBOffset)).divide(PhysicsTools.EV, MathContext.DECIMAL128));
         
-        //at the moment, approximation of energy modeling the QD as a cube with side length L = (2*radius + height)/3
-//        BigDecimal characteristicLength = ((p_radius.multiply(two)).add(p_height)).divide(three, MathContext.DECIMAL128);
-//        m_energy = material.getBaseBandgapSI().add((three.multiply(PhysicsTools.hbar.pow(2)).multiply(pi.pow(2))).divide(two.multiply(material.getElectronEffectiveMassSI()).multiply(characteristicLength.pow(2)), MathContext.DECIMAL128)); 
-
         BigDecimal minPhononEnergy = CBOffset.subtract(electronConfinementEnergy);
         if (minPhononEnergy.compareTo(BigDecimal.ZERO) <= 0)
         {

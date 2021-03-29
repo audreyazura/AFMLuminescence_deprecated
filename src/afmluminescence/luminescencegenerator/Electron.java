@@ -109,7 +109,10 @@ public class Electron extends AbsorberObject
                     {
                         for (QuantumDot QD: currentSet)
                         {
-                            atRangeDots.add(QD);
+                            if (QD.canCapture())
+                            {
+                                atRangeDots.add(QD);
+                            }
                         }
                     }
                 }

@@ -32,6 +32,7 @@ public class QuantumDot extends AbsorberObject
 {
     private final BigDecimal m_energy;
     private final BigDecimal m_radius;
+    private final double m_captureProbaPhonon;
     private final double m_escapeProbability;
     private final double m_recombinationProbability;
     private boolean m_recombined = false;
@@ -47,7 +48,8 @@ public class QuantumDot extends AbsorberObject
         m_positionX = p_positionX;
         m_positionY = p_positionY;
         
-        m_radius = p_radius;
+        m_radius = p_radius.multiply(new BigDecimal("1"));
+        BigDecimal height = p_height.multiply(new BigDecimal("2")); //multiplied to have enough QDs that can capture (some problem with file)
 //        BigDecimal equivalentSquareSide = m_radius.multiply(BigDecimalMath.sqrt(BigDecimalMath.pi(MathContext.DECIMAL128), MathContext.DECIMAL128));
         
         BigDecimal CBOffset = (new BigDecimal("0.7")).multiply(PhysicsTools.EV); //from https://aip.scitation.org/doi/abs/10.1063/1.125965, make it into PhysicalTools as a new enum, Metamaterials
@@ -55,7 +57,7 @@ public class QuantumDot extends AbsorberObject
 //        BigDecimal energyHeightElectron = (energyParameter(p_height, CBOffset, QDMaterial.getElectronEffectiveMassSI()).divide(p_height, MathContext.DECIMAL128)).pow(2);
 //        BigDecimal electronConfinementEnergy = (two.multiply(PhysicsTools.hbar.pow(2)).divide(QDMaterial.getElectronEffectiveMassSI(), MathContext.DECIMAL128)).multiply((energyPlaneElectron.multiply(two)).add(energyHeightElectron));
         BigDecimal electronOscillatorPlane = BigDecimalMath.sqrt(eight.multiply(CBOffset).divide(QDMaterial.getElectronEffectiveMassSI().multiply(m_radius.pow(2)), MathContext.DECIMAL128), MathContext.DECIMAL128);
-        BigDecimal electronOscillatorHeight = BigDecimalMath.sqrt(eight.multiply(CBOffset).divide(QDMaterial.getElectronEffectiveMassSI().multiply(p_height.pow(2)), MathContext.DECIMAL128), MathContext.DECIMAL128);
+        BigDecimal electronOscillatorHeight = BigDecimalMath.sqrt(eight.multiply(CBOffset).divide(QDMaterial.getElectronEffectiveMassSI().multiply(height.pow(2)), MathContext.DECIMAL128), MathContext.DECIMAL128);
         BigDecimal electronConfinementEnergy = PhysicsTools.hbar.multiply(electronOscillatorPlane.add(electronOscillatorHeight)).divide(two);
 
         BigDecimal VBOffset = hostMaterial.getBaseBandgapSI().subtract(QDMaterial.getBaseBandgapSI()).subtract(CBOffset);
@@ -67,13 +69,20 @@ public class QuantumDot extends AbsorberObject
         BigDecimal holeConfinementEnergy = PhysicsTools.hbar.multiply(holeOscillatorPlane.add(holeOscillatorHeight)).divide(two);
 
         m_energy = QDMaterial.getBaseBandgapSI().add(electronConfinementEnergy).add(holeConfinementEnergy);
-        //System.out.println(m_energy.divide(PhysicsTools.EV, MathContext.DECIMAL128));
+//        System.out.println(m_energy.divide(PhysicsTools.EV, MathContext.DECIMAL128));
         //System.out.println(hostMaterial.getBaseBandgap() + "\t" + (QDMaterial.getBaseBandgapSI().add(electronConfinementEnergy).add(VBOffset)).divide(PhysicsTools.EV, MathContext.DECIMAL128));
         
         BigDecimal minPhononEnergy = CBOffset.subtract(electronConfinementEnergy);
+//        System.out.println(minPhononEnergy.divide(PhysicsTools.EV, MathContext.DECIMAL128));
+//        System.out.println("");
         if (minPhononEnergy.compareTo(BigDecimal.ZERO) <= 0)
         {
             minPhononEnergy = BigDecimal.ZERO;
+            m_captureProbaPhonon = 0;
+        }
+        else
+        {
+            m_captureProbaPhonon = 1;
         }
 //        System.out.println(minPhononEnergy.divide(PhysicsTools.EV, MathContext.DECIMAL128));
         BigDecimal minPhotonEnergy = hostMaterial.getBaseBandgapSI().add(minPhononEnergy);
@@ -82,8 +91,14 @@ public class QuantumDot extends AbsorberObject
         m_recombinationProbability = 0.01;
     }
     
+    synchronized public boolean canCapture()
+    {
+        return m_captureProbaPhonon != 0;
+    }
+    
     /**
      * The capture probability depends on many parameters and demand to be further investigate.
+     * At the moment, the probability is calculated by the probability for the electron to reach the QDs multiplied by a capture probability based theoretical calculation (to be implemented)
      * At the moment, it is approximated as the overlapping between the QD and the circle containing the positions the electron can reach
      * See here for the calculation of the overlap: https://www.xarg.org/2016/07/calculate-the-intersection-area-of-two-circles/
      * It had to be slightly adapted with four different cases:
@@ -98,19 +113,19 @@ public class QuantumDot extends AbsorberObject
      */
     synchronized public boolean capture(PcgRSFast p_RNG, BigDecimal electronDistance, BigDecimal electronSpan)
     {
-        double captureProba = 0;
+        double captureProbaPosition = 0;
         
         //case if the electron is entirely inside the QD
         if (electronDistance.add(electronSpan).compareTo(m_radius) <= 0)
         {
-            captureProba = 1;
+            captureProbaPosition = 1;
         }
         else
         {
             //if the QD is entirely in the electron span
             if (electronDistance.add(m_radius).compareTo(electronSpan) <= 0)
             {
-                captureProba = (m_radius.pow(2).divide(electronSpan.pow(2), MathContext.DECIMAL128)).doubleValue();
+                captureProbaPosition = (m_radius.pow(2).divide(electronSpan.pow(2), MathContext.DECIMAL128)).doubleValue();
             }
             else
             {
@@ -143,17 +158,17 @@ public class QuantumDot extends AbsorberObject
                     overlapArea = electronSlice.add(QDSlice).subtract(triangleCorrection);
                 }
                 
-                captureProba = overlapArea.divide(BigDecimalMath.pi(MathContext.DECIMAL128).multiply(electronSpan.pow(2)), MathContext.DECIMAL128).doubleValue();
+                captureProbaPosition = overlapArea.divide(BigDecimalMath.pi(MathContext.DECIMAL128).multiply(electronSpan.pow(2)), MathContext.DECIMAL128).doubleValue();
             }
         }
         
-        if (captureProba < 0 || captureProba > 1)
+        if (captureProbaPosition < 0 || captureProbaPosition > 1)
         {
             System.out.println("Probability has to be bound between 0 and 1");
             Logger.getLogger(QuantumDot.class.getName()).log(Level.SEVERE, null, new ArithmeticException("Probability has to be bound between 0 and 1"));
         }
         
-        return p_RNG.nextDouble() < captureProba;
+        return p_RNG.nextDouble() < captureProbaPosition * m_captureProbaPhonon;
     }
     
     /**

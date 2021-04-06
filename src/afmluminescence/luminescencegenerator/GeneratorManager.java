@@ -16,6 +16,7 @@
  */
 package afmluminescence.luminescencegenerator;
 
+import com.github.audreyazura.commonutils.ContinuousFunction;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.io.BufferedReader;
@@ -31,7 +32,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -46,6 +46,7 @@ public class GeneratorManager implements Runnable
 {
     private final BigDecimal m_sampleXSize;
     private final BigDecimal m_sampleYSize;
+    private final BigDecimal m_timeStep;
     private final BigDecimal m_vth;
     private final ImageBuffer m_output;
     private final int m_nElectrons;
@@ -64,6 +65,7 @@ public class GeneratorManager implements Runnable
         m_sampleXSize = BigDecimal.ZERO;
         m_sampleYSize = BigDecimal.ZERO;
         m_vth = BigDecimal.ZERO;
+        m_timeStep = BigDecimal.ZERO;;
         m_output = null;
         m_nElectrons = 0;
         m_handler = null;
@@ -75,6 +77,8 @@ public class GeneratorManager implements Runnable
         m_handler = p_handler;
         m_nElectrons = p_nElectron;
         m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
+        m_timeStep = new BigDecimal("1e-12");
+//        m_timeStep = new BigDecimal("1e-14");
         
         m_sampleXSize = p_sampleX;
         m_sampleYSize = p_sampleY;
@@ -83,6 +87,10 @@ public class GeneratorManager implements Runnable
         for (int i = 0 ; i < p_nQDs ; i += 1)
         {
             QuantumDot currentQD = generateRandomQD(m_randomGenerator, p_QDList);
+            if (currentQD == null)
+            {
+                Logger.getLogger(GeneratorManager.class.getName()).log(Level.SEVERE, "Error in capture time file.", new IOException());
+            }
             p_QDList.add(currentQD);
             addToMap(currentQD);
         }
@@ -95,9 +103,14 @@ public class GeneratorManager implements Runnable
         m_handler = p_handler;
         m_nElectrons = p_nElectron;
         m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
+        m_timeStep = new BigDecimal("1e-12");
+//        m_timeStep = new BigDecimal("1e-14");
         
         m_sampleXSize = p_sampleX;
         m_sampleYSize = p_sampleY;
+
+        //getting the capture probability function of the QDs
+        ContinuousFunction captureTime = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/ElectronCaptureTime.scsv"))).getFunction();
 
         //generating QDs
         String[] nameSplit = p_QDFile.getPath().split("\\.");
@@ -111,7 +124,7 @@ public class GeneratorManager implements Runnable
         Pattern numberRegex = Pattern.compile("^\\-?\\d+(\\.\\d+(e(\\+|\\-)\\d+)?)?");
 	
 	String line;
-	while (((line = fileReader.readLine()) != null))
+        while (((line = fileReader.readLine()) != null))
 	{	    
 	    String[] lineSplit = line.strip().split(";");
 	    
@@ -122,7 +135,7 @@ public class GeneratorManager implements Runnable
                 BigDecimal radius = formatBigDecimal(((new BigDecimal(lineSplit[2].strip())).divide(new BigDecimal("2"), MathContext.DECIMAL128)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
                 BigDecimal height = formatBigDecimal((new BigDecimal(lineSplit[3].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
                 
-                QuantumDot currentQD = new QuantumDot(x, y, radius, height);
+                QuantumDot currentQD = new QuantumDot(x, y, radius, height, m_timeStep, captureTime);
                 p_QDList.add(currentQD);
                 addToMap(currentQD);
 	    }
@@ -163,31 +176,42 @@ public class GeneratorManager implements Runnable
         BigDecimal x;
         BigDecimal y;
         BigDecimal radius;
-        QuantumDot createdQD;
+        QuantumDot createdQD = null;
         
-        x = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleXSize));
-        y = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleYSize));
-
-        do
+        //getting the capture probability function of the QDs
+        ContinuousFunction captureTime;
+        try
         {
-            radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 2.1 + 12)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
-
-        }while (radius.compareTo(BigDecimal.ZERO) <= 0);
-
-        createdQD = new QuantumDot(x, y, radius, radius);
-        
-        while(!validPosition(createdQD, p_existingQDs))
-        {
+            captureTime = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/ElectronCaptureTime.scsv"))).getFunction();
+            
             x = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleXSize));
             y = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleYSize));
-            
+
             do
             {
                 radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 2.1 + 12)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
 
             }while (radius.compareTo(BigDecimal.ZERO) <= 0);
-            
-            createdQD = new QuantumDot(x, y, radius, radius);
+
+            createdQD = new QuantumDot(x, y, radius, radius, m_timeStep, captureTime);
+
+            while(!validPosition(createdQD, p_existingQDs))
+            {
+                x = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleXSize));
+                y = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleYSize));
+
+                do
+                {
+                    radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 2.1 + 12)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+
+                }while (radius.compareTo(BigDecimal.ZERO) <= 0);
+
+                createdQD = new QuantumDot(x, y, radius, radius, m_timeStep, captureTime);
+            }
+        } 
+        catch (ArrayIndexOutOfBoundsException|IOException|DataFormatException ex)
+        {
+            Logger.getLogger(GeneratorManager.class.getName()).log(Level.SEVERE, "Error in capture time file.", ex);
         }
         
         return createdQD;
@@ -227,9 +251,6 @@ public class GeneratorManager implements Runnable
         }
         m_output.logElectrons(electronList);
         
-        BigDecimal timeStep = new BigDecimal("1e-12");
-//        BigDecimal timeStep = new BigDecimal("1e-14");
-        
         //cutting calculation into chunks to distribute it between cores
         int numberOfChunks = Integer.min(Runtime.getRuntime().availableProcessors(), electronList.size());
         Iterator<Electron> electronIterator = electronList.iterator();
@@ -250,7 +271,7 @@ public class GeneratorManager implements Runnable
         ElectronMover[] moverArray = new ElectronMover[numberOfChunks];
         for (int i = 0 ; i < numberOfChunks ; i += 1)
         {
-            moverArray[i] = new ElectronMover(m_sampleXSize, m_sampleYSize, timeStep, m_vth, electronChunks[i], m_map);
+            moverArray[i] = new ElectronMover(m_sampleXSize, m_sampleYSize, m_timeStep, m_vth, electronChunks[i], m_map);
         }
         
         //calculation start!
@@ -267,7 +288,7 @@ public class GeneratorManager implements Runnable
                 allFinished = true;
                 
                 //advancing time logger (can be done before the calculation, the time logger is not taken into them)
-                timePassed = timePassed.add(timeStep);
+                timePassed = timePassed.add(m_timeStep);
                 
                 //calculating the electrons movement
                 for (int i = 0 ; i < numberOfChunks ; i += 1)

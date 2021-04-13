@@ -39,7 +39,7 @@ public class QuantumDot extends AbsorberObject
     private boolean m_recombined = false;
     
     //ΔEg(InAs/GaAs) ~ 1.1 eV
-    public QuantumDot (BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_radius, BigDecimal p_height, BigDecimal p_timeStep, ContinuousFunction p_captureTime)
+    public QuantumDot (BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_radius, BigDecimal p_height, BigDecimal p_timeStep, ContinuousFunction p_captureTime, ContinuousFunction p_escapeTime)
     {
         BigDecimal two = new BigDecimal("2");
         BigDecimal eight = new BigDecimal("8");
@@ -82,9 +82,10 @@ public class QuantumDot extends AbsorberObject
             m_captureProba = (BigDecimal.ONE.subtract(BigDecimalMath.exp(p_timeStep.negate().divide(p_captureTime.getValueAtPosition(m_radius), MathContext.DECIMAL128)))).doubleValue();
         }
         
+        m_escapeProbability = (BigDecimal.ONE.subtract(BigDecimalMath.exp(p_timeStep.negate().divide(p_escapeTime.getValueAtPosition(m_radius), MathContext.DECIMAL128)))).doubleValue();
+        
         BigDecimal minPhotonEnergy = hostMaterial.getBaseBandgapSI().add(minPhononEnergy);
         
-        m_escapeProbability = 0.01;
         m_recombinationProbability = 0.01;
     }
     

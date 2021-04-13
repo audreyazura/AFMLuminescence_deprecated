@@ -78,7 +78,6 @@ public class GeneratorManager implements Runnable
         m_nElectrons = p_nElectron;
         m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
         m_timeStep = new BigDecimal("1e-12");
-//        m_timeStep = new BigDecimal("1e-14");
         
         m_sampleXSize = p_sampleX;
         m_sampleYSize = p_sampleY;
@@ -104,13 +103,13 @@ public class GeneratorManager implements Runnable
         m_nElectrons = p_nElectron;
         m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
         m_timeStep = new BigDecimal("1e-12");
-//        m_timeStep = new BigDecimal("1e-14");
         
         m_sampleXSize = p_sampleX;
         m_sampleYSize = p_sampleY;
 
-        //getting the capture probability function of the QDs
-        ContinuousFunction captureTime = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/ElectronCaptureTime.scsv"))).getFunction();
+        //getting the functions giving the capture time, escape time and recombination time as a function of the size of the QD.
+        ContinuousFunction captureTime = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/CaptureProba/ElectronCaptureTime.scsv"))).getFunction();
+        ContinuousFunction escapeTime = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/EscapeProba/EscapeTime-10^-17cm^-3.scsv"))).getFunction();
 
         //generating QDs
         String[] nameSplit = p_QDFile.getPath().split("\\.");
@@ -135,7 +134,7 @@ public class GeneratorManager implements Runnable
                 BigDecimal radius = formatBigDecimal(((new BigDecimal(lineSplit[2].strip())).divide(new BigDecimal("2"), MathContext.DECIMAL128)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
                 BigDecimal height = formatBigDecimal((new BigDecimal(lineSplit[3].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
                 
-                QuantumDot currentQD = new QuantumDot(x, y, radius, height, m_timeStep, captureTime);
+                QuantumDot currentQD = new QuantumDot(x, y, radius, height, m_timeStep, captureTime, escapeTime);
                 p_QDList.add(currentQD);
                 addToMap(currentQD);
 	    }
@@ -178,11 +177,11 @@ public class GeneratorManager implements Runnable
         BigDecimal radius;
         QuantumDot createdQD = null;
         
-        //getting the capture probability function of the QDs
-        ContinuousFunction captureTime;
         try
         {
-            captureTime = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/ElectronCaptureTime.scsv"))).getFunction();
+            //getting the functions giving the capture time, escape time and recombination time as a function of the size of the QD.
+            ContinuousFunction captureTime = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/CaptureProba/ElectronCaptureTime.scsv"))).getFunction();
+            ContinuousFunction escapeTime = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/EscapeProba/EscapeTime-10^-17cm^-3.scsv"))).getFunction();
             
             x = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleXSize));
             y = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleYSize));
@@ -193,7 +192,7 @@ public class GeneratorManager implements Runnable
 
             }while (radius.compareTo(BigDecimal.ZERO) <= 0);
 
-            createdQD = new QuantumDot(x, y, radius, radius, m_timeStep, captureTime);
+            createdQD = new QuantumDot(x, y, radius, radius, m_timeStep, captureTime, escapeTime);
 
             while(!validPosition(createdQD, p_existingQDs))
             {
@@ -206,7 +205,7 @@ public class GeneratorManager implements Runnable
 
                 }while (radius.compareTo(BigDecimal.ZERO) <= 0);
 
-                createdQD = new QuantumDot(x, y, radius, radius, m_timeStep, captureTime);
+                createdQD = new QuantumDot(x, y, radius, radius, m_timeStep, captureTime, escapeTime);
             }
         } 
         catch (ArrayIndexOutOfBoundsException|IOException|DataFormatException ex)

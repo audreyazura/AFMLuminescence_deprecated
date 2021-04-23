@@ -74,19 +74,22 @@ public class QuantumDot extends AbsorberObject
         BigDecimal minPhononEnergy = CBOffset.subtract(electronConfinementEnergy);
         if (minPhononEnergy.compareTo(BigDecimal.ZERO) <= 0)
         {
+            //if the first QD energy level is higher than barrier conduction band, the QD cannot confine the carrier, and thus the capture probability is null
             minPhononEnergy = BigDecimal.ZERO;
             m_captureProba = 0;
         }
         else
         {
+            //else, the capture probability is calculated using P_capture = 1 - exp(-Δt/tau_capture), with tau_capture given in https://aip.scitation.org/doi/10.1063/1.1512694
             m_captureProba = (BigDecimal.ONE.subtract(BigDecimalMath.exp(p_timeStep.negate().divide(p_captureTime.getValueAtPosition(m_radius), MathContext.DECIMAL128)))).doubleValue();
         }
         
+        //the escape probability is calculated using P_capture = 1 - exp(-Δt/tau_escape) with tau_escape from https://aip.scitation.org/doi/10.1063/1.4824469
         m_escapeProbability = (BigDecimal.ONE.subtract(BigDecimalMath.exp(p_timeStep.negate().divide(p_escapeTime.getValueAtPosition(m_radius), MathContext.DECIMAL128)))).doubleValue();
         
         BigDecimal minPhotonEnergy = hostMaterial.getBaseBandgapSI().add(minPhononEnergy);
         
-        m_recombinationProbability = 0.01;
+        m_recombinationProbability = (BigDecimal.ONE.subtract(BigDecimalMath.exp(p_timeStep.negate().divide((new BigDecimal("3.6")).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()), MathContext.DECIMAL128)))).doubleValue();
     }
     
     synchronized public boolean canCapture()

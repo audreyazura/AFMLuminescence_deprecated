@@ -150,7 +150,7 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
             }
         }
         
-        SimulationWriter writer = new SimulationWriter(new ArrayList(recombinationTimes), new ArrayList(recombinationEnergies));
+        SimulationSorter writer = new SimulationSorter(new ArrayList(recombinationTimes), new ArrayList(recombinationEnergies));
         try
         {
             writer.saveToFile(new File("Results/TimeResolved.dat"), new File("Results/Spectra.dat"));

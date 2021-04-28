@@ -59,6 +59,7 @@ public class Launcher
             arguments[0] = argParser.get("--lum", "");
             arguments[1] = argParser.get("--QDs", "");
             
+            arguments[0] = "/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/PL/Luminescence.scsv";
             arguments[1] = "/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/QDList.csv";
 //            arguments[1] = "/home/alafuente/ドキュメント/OkadaCollab/iii201028a_clean.csv";
             

@@ -24,19 +24,26 @@ import afmluminescence.luminescencegenerator.GeneratorManager;
 import afmluminescence.luminescencegenerator.ImageBuffer;
 import afmluminescence.luminescencegenerator.QuantumDot;
 import afmluminescence.luminescencegenerator.ResultHandler;
+import com.github.audreyazura.commonutils.ContinuousFunction;
+import com.github.audreyazura.commonutils.PhysicsTools;
 import com.sun.jdi.AbsentInformationException;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 import javafx.application.Platform;
 import javafx.scene.image.Image;
@@ -52,17 +59,46 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
     private final BigDecimal m_scaleY;
     private final DrawingBuffer m_buffer;
     private final GUIManager m_gui;
-    private final File m_luminescence;
+    private final ContinuousFunction m_luminescence;
     
     public ExecutionManager (GUIManager p_gui, DrawingBuffer p_buffer, List<String> p_filesPaths, BigDecimal p_sampleXSize, BigDecimal p_sampleYSize, BigDecimal p_scaleX, BigDecimal p_scaleY)
     {
         m_scaleX = p_scaleX;
         m_scaleY = p_scaleY;
         
-        m_luminescence = new File(p_filesPaths.get(0));
-        
         m_gui = p_gui;
         m_buffer = p_buffer;
+        
+        HashMap<BigDecimal, BigDecimal> lumValues = new HashMap<>();
+        try
+        {
+            BufferedReader lumReader = new BufferedReader(new FileReader(new File(p_filesPaths.get(0))));
+            Pattern numberRegex = Pattern.compile("^\\-?\\d+(\\.\\d+(e(\\+|\\-)\\d+)?)?");
+            String line;
+            while (((line = lumReader.readLine()) != null))
+            {	    
+                String[] lineSplit = line.strip().split(";");
+
+                if(numberRegex.matcher(lineSplit[0]).matches())
+                {
+                    BigDecimal energy = PhysicsTools.h.multiply(PhysicsTools.c).divide((new BigDecimal(lineSplit[0])).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()), MathContext.DECIMAL128);
+                    BigDecimal counts = new BigDecimal(lineSplit[1]);
+                    
+                    lumValues.put(energy, counts);
+                }
+            }
+        }
+        catch (IOException ex)
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        if (lumValues.isEmpty())
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("Luminescence file missing or badly formatted."));
+        }
+        
+        m_luminescence = new ContinuousFunction(lumValues);
         
         String qdsPath = p_filesPaths.get(1);
         if (qdsPath.equals(""))

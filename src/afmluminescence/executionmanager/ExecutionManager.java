@@ -21,11 +21,13 @@ import afmluminescence.guimanager.GUIManager;
 import afmluminescence.guimanager.ObjectToDraw;
 import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.GeneratorManager;
+import static afmluminescence.luminescencegenerator.GeneratorManager.formatBigDecimal;
 import afmluminescence.luminescencegenerator.ImageBuffer;
 import afmluminescence.luminescencegenerator.QuantumDot;
 import afmluminescence.luminescencegenerator.ResultHandler;
 import com.github.audreyazura.commonutils.ContinuousFunction;
 import com.github.audreyazura.commonutils.PhysicsTools;
+import com.github.kilianB.pcg.fast.PcgRSFast;
 import com.sun.jdi.AbsentInformationException;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -40,7 +42,8 @@ import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -57,9 +60,10 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
 {
     private final BigDecimal m_scaleX;
     private final BigDecimal m_scaleY;
+    private final ContinuousFunction m_luminescence;
     private final DrawingBuffer m_buffer;
     private final GUIManager m_gui;
-    private final ContinuousFunction m_luminescence;
+    private final List<QuantumDot> m_QDList = new ArrayList<>();
     
     public ExecutionManager (GUIManager p_gui, DrawingBuffer p_buffer, List<String> p_filesPaths, BigDecimal p_sampleXSize, BigDecimal p_sampleYSize, BigDecimal p_scaleX, BigDecimal p_scaleY)
     {
@@ -70,6 +74,7 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
         m_buffer = p_buffer;
         
         HashMap<BigDecimal, BigDecimal> lumValues = new HashMap<>();
+        BigDecimal maxCounts = BigDecimal.ZERO;
         try
         {
             BufferedReader lumReader = new BufferedReader(new FileReader(new File(p_filesPaths.get(0))));
@@ -85,6 +90,11 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
                     BigDecimal counts = new BigDecimal(lineSplit[1]);
                     
                     lumValues.put(energy, counts);
+                    
+                    if (counts.compareTo(maxCounts) > 0)
+                    {
+                        maxCounts = counts;
+                    }
                 }
             }
         }
@@ -98,25 +108,108 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("Luminescence file missing or badly formatted."));
         }
         
+        //normalisation of the luminescence
+        for (BigDecimal abscissa: lumValues.keySet())
+        {
+            lumValues.put(abscissa, lumValues.get(abscissa).divide(maxCounts, MathContext.DECIMAL128));
+        }
+        
         m_luminescence = new ContinuousFunction(lumValues);
         
+        //generating the QDs to be send and starting the simulation
         String qdsPath = p_filesPaths.get(1);
-        if (qdsPath.equals(""))
+        BigDecimal timeStep = new BigDecimal("1e-12");
+        try
         {
-            (new Thread(new GeneratorManager(this, this, 1000, 350, new BigDecimal("300"), p_sampleXSize, p_sampleYSize))).start();
+            //getting the functions giving the capture time, escape time and recombination time as a function of the size of the QD.
+            //capture time reference: https://aip.scitation.org/doi/10.1063/1.1512694
+            //escape time reference: https://aip.scitation.org/doi/10.1063/1.4824469
+            ContinuousFunction captureTimes = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/CaptureProba/ElectronCaptureTime.scsv"))).getFunction();
+            ContinuousFunction escapeTimes = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/EscapeProba/EscapeTime-10^-17cm^-3.scsv"))).getFunction();
+            
+            if (qdsPath.equals(""))
+            {
+                //QDs are randomly generated with size following a normal distribution
+                int nQDs = 300;
+                PcgRSFast RNGenerator = new PcgRSFast();
+                for (int i = 0 ; i < nQDs ; i += 1)
+                {
+                    BigDecimal x;
+                    BigDecimal y;
+                    BigDecimal radius;
+                    QuantumDot createdQD;
+
+                    do
+                    {
+                        x = formatBigDecimal((new BigDecimal(RNGenerator.nextDouble())).multiply(p_sampleXSize));
+                        y = formatBigDecimal((new BigDecimal(RNGenerator.nextDouble())).multiply(p_sampleYSize));
+
+                        do
+                        {
+                            radius = formatBigDecimal((new BigDecimal(RNGenerator.nextGaussian() * 2.1 + 12)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+
+                        }while (radius.compareTo(BigDecimal.ZERO) <= 0);
+
+                        createdQD = new QuantumDot(x, y, radius, radius, timeStep, captureTimes, escapeTimes);
+
+                    }while(!validPosition(createdQD, m_QDList));
+                    
+                    m_QDList.add(createdQD);
+                }
+            }
+            else
+            {
+               //QDs are extracted from file
+                String[] nameSplit = qdsPath.split("\\.");
+
+                if (!nameSplit[nameSplit.length-1].equals("csv"))
+                {
+                    throw new DataFormatException();
+                }
+
+                BufferedReader fileReader = new BufferedReader(new FileReader(new File(qdsPath)));
+                Pattern numberRegex = Pattern.compile("^\\-?\\d+(\\.\\d+(e(\\+|\\-)\\d+)?)?");
+
+                String line;
+                while (((line = fileReader.readLine()) != null))
+                {	    
+                    String[] lineSplit = line.strip().split(";");
+
+                    if(numberRegex.matcher(lineSplit[0]).matches())
+                    {
+                        BigDecimal x = GeneratorManager.formatBigDecimal((new BigDecimal(lineSplit[0].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                        BigDecimal y = GeneratorManager.formatBigDecimal((new BigDecimal(lineSplit[1].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                        BigDecimal radius = GeneratorManager.formatBigDecimal(((new BigDecimal(lineSplit[2].strip())).divide(new BigDecimal("2"), MathContext.DECIMAL128)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                        BigDecimal height = GeneratorManager.formatBigDecimal((new BigDecimal(lineSplit[3].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+
+                        QuantumDot currentQD = new QuantumDot(x, y, radius, height, timeStep, captureTimes, escapeTimes);
+                        m_QDList.add(currentQD);
+                    }
+                }
+            }
+            
+            logQDs(m_QDList);
+            
+            //Starting the simulation
+            (new Thread(new GeneratorManager(this, this, 100, new ArrayList(m_QDList), new BigDecimal("300"), timeStep, p_sampleXSize, p_sampleYSize))).start();
         }
-        else
+        catch (DataFormatException|IOException ex)
         {
-            try
-            {
-                (new Thread(new GeneratorManager(this, this, 10000, new File(qdsPath), new BigDecimal("300"), p_sampleXSize, p_sampleYSize))).start();
-            }
-            catch (DataFormatException|IOException ex)
-            {
-                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
-            }
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
         
+    }
+    
+    private boolean validPosition(QuantumDot p_testedQD, List<QuantumDot> p_existingQDs)
+    {
+        boolean valid = true;
+        
+        for (QuantumDot QD: p_existingQDs)
+        {
+            valid &= p_testedQD.getRadius().add(QD.getRadius()).compareTo(p_testedQD.getDistance(QD.getX(), QD.getY())) < 0;
+        }
+        
+        return valid;
     }
     
     @Override
@@ -186,15 +279,20 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
             }
         }
         
-        SimulationSorter writer = new SimulationSorter(new ArrayList(recombinationTimes), new ArrayList(recombinationEnergies));
+        
+        
+        SimulationSorter sorter = new SimulationSorter(new ArrayList(recombinationTimes), new ArrayList(recombinationEnergies));
+        
         try
         {
-            writer.saveToFile(new File("Results/TimeResolved.dat"), new File("Results/Spectra.dat"));
+            sorter.saveToFile(new File("Results/TimeResolved.dat"), new File("Results/Spectra.dat"));
         }
         catch (IOException ex)
         {
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
+        
+        SimulationJudge judge = new SimulationJudge(m_luminescence, sorter.getLuminescence());
         
         try
         {
@@ -212,6 +310,24 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
     {
         try
         {
+            Set<BigDecimal> energySet = m_luminescence.getAbscissa();
+            File lumFile = new File("Results/Luminescence.dat");
+            if (!lumFile.getParentFile().isDirectory())
+            {
+                lumFile.getParentFile().mkdirs();
+            }
+            BufferedWriter lumWriter = new BufferedWriter(new FileWriter(lumFile));
+            lumWriter.write("Wavelength (nm)\tIntensity (cps)");
+            for (BigDecimal abscissa: energySet)
+            {
+                BigDecimal wavelengthNano = ((PhysicsTools.h.multiply(PhysicsTools.c)).divide(abscissa, MathContext.DECIMAL128)).divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
+
+                lumWriter.newLine();
+                lumWriter.write(wavelengthNano.toPlainString() + "\t" + m_luminescence.getValueAtPosition(abscissa));
+            }
+            lumWriter.flush();
+            lumWriter.close();
+            
             String spectraFile = "Results/Spectra.png";
             String timeResolvedFile = "Results/TimeResolved.png";
             
@@ -224,7 +340,7 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
             gnuplotWriter.newLine();
             gnuplotWriter.write("set output \"" + spectraFile + "\"");
             gnuplotWriter.newLine();
-            gnuplotWriter.write("plot \"Results/Spectra.dat\" u 1:2 w line t \"Luminescence\"");
+            gnuplotWriter.write("plot[*:*][0:1.1] \"Results/Spectra.dat\" u 1:2 w line t \"Calculated Lum\", \"Results/Luminescence.dat\" u 1:2 w line t \"Experimental Lum\"");
             gnuplotWriter.newLine();
             gnuplotWriter.write("unset output");
             gnuplotWriter.newLine();

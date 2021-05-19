@@ -16,6 +16,7 @@
  */
 package afmluminescence.luminescencegenerator;
 
+import afmluminescence.executionmanager.SCSVLoader;
 import com.github.audreyazura.commonutils.ContinuousFunction;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
@@ -50,7 +51,7 @@ public class GeneratorManager implements Runnable
     private final BigDecimal m_vth;
     private final ImageBuffer m_output;
     private final int m_nElectrons;
-    private final List<QuantumDot> p_QDList = new ArrayList<>();
+    private final List<QuantumDot> m_QDList;
     
     //a map of the abscissa, separated in column, containing sets of QD present at that abscissa
     private final HashMap<BigInteger, Set<QuantumDot>> m_map = new HashMap<>();
@@ -69,80 +70,25 @@ public class GeneratorManager implements Runnable
         m_output = null;
         m_nElectrons = 0;
         m_handler = null;
+        m_QDList = new ArrayList<QuantumDot>();
     }
     
-    public GeneratorManager (ImageBuffer p_buffer, ResultHandler p_handler, int p_nElectron, int p_nQDs, BigDecimal p_temperature, BigDecimal p_sampleX, BigDecimal p_sampleY)
+    public GeneratorManager (ImageBuffer p_buffer, ResultHandler p_handler, int p_nElectron, List<QuantumDot> p_QDList, BigDecimal p_temperature, BigDecimal p_timeStep, BigDecimal p_sampleX, BigDecimal p_sampleY) throws DataFormatException, FileNotFoundException, IOException
     {
         m_output = p_buffer;
         m_handler = p_handler;
         m_nElectrons = p_nElectron;
         m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
-        m_timeStep = new BigDecimal("1e-12");
+        m_timeStep = p_timeStep;
         
         m_sampleXSize = p_sampleX;
         m_sampleYSize = p_sampleY;
 
-        //generating QDs
-        for (int i = 0 ; i < p_nQDs ; i += 1)
+        m_QDList = p_QDList;
+        for (QuantumDot QD: m_QDList)
         {
-            QuantumDot currentQD = generateRandomQD(m_randomGenerator, p_QDList);
-            if (currentQD == null)
-            {
-                Logger.getLogger(GeneratorManager.class.getName()).log(Level.SEVERE, "Error in capture time file.", new IOException());
-            }
-            p_QDList.add(currentQD);
-            addToMap(currentQD);
+            addToMap(QD);
         }
-        m_output.logQDs(p_QDList);
-    }
-    
-    public GeneratorManager (ImageBuffer p_buffer, ResultHandler p_handler, int p_nElectron, File p_QDFile, BigDecimal p_temperature, BigDecimal p_sampleX, BigDecimal p_sampleY) throws DataFormatException, FileNotFoundException, IOException
-    {
-        m_output = p_buffer;
-        m_handler = p_handler;
-        m_nElectrons = p_nElectron;
-        m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
-        m_timeStep = new BigDecimal("1e-12");
-        
-        m_sampleXSize = p_sampleX;
-        m_sampleYSize = p_sampleY;
-
-        //getting the functions giving the capture time, escape time and recombination time as a function of the size of the QD.
-        //capture time reference: https://aip.scitation.org/doi/10.1063/1.1512694
-        //escape time reference: https://aip.scitation.org/doi/10.1063/1.4824469
-        ContinuousFunction captureTime = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/CaptureProba/ElectronCaptureTime.scsv"))).getFunction();
-        ContinuousFunction escapeTime = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/EscapeProba/EscapeTime-10^-17cm^-3.scsv"))).getFunction();
-
-        //generating QDs
-        String[] nameSplit = p_QDFile.getPath().split("\\.");
-        
-        if (!nameSplit[nameSplit.length-1].equals("csv"))
-        {
-            throw new DataFormatException();
-        }
-        
-        BufferedReader fileReader = new BufferedReader(new FileReader(p_QDFile));
-        Pattern numberRegex = Pattern.compile("^\\-?\\d+(\\.\\d+(e(\\+|\\-)\\d+)?)?");
-	
-	String line;
-        while (((line = fileReader.readLine()) != null))
-	{	    
-	    String[] lineSplit = line.strip().split(";");
-	    
-            if(numberRegex.matcher(lineSplit[0]).matches())
-	    {
-		BigDecimal x = formatBigDecimal((new BigDecimal(lineSplit[0].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
-                BigDecimal y = formatBigDecimal((new BigDecimal(lineSplit[1].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
-                BigDecimal radius = formatBigDecimal(((new BigDecimal(lineSplit[2].strip())).divide(new BigDecimal("2"), MathContext.DECIMAL128)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
-                BigDecimal height = formatBigDecimal((new BigDecimal(lineSplit[3].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
-                
-                QuantumDot currentQD = new QuantumDot(x, y, radius, height, m_timeStep, captureTime, escapeTime);
-                p_QDList.add(currentQD);
-                addToMap(currentQD);
-	    }
-        }
-        
-        m_output.logQDs(p_QDList);
     }
     
     /**
@@ -170,64 +116,6 @@ public class GeneratorManager implements Runnable
                 currentSet.add(p_QDToAdd);
             }
         }
-    }
-    
-    private QuantumDot generateRandomQD(PcgRSFast p_randomGenerator, List<QuantumDot> p_existingQDs)
-    {
-        BigDecimal x;
-        BigDecimal y;
-        BigDecimal radius;
-        QuantumDot createdQD = null;
-        
-        try
-        {
-            //getting the functions giving the capture time, escape time and recombination time as a function of the size of the QD.
-            ContinuousFunction captureTime = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/CaptureProba/ElectronCaptureTime.scsv"))).getFunction();
-            ContinuousFunction escapeTime = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/EscapeProba/EscapeTime-10^-17cm^-3.scsv"))).getFunction();
-            
-            x = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleXSize));
-            y = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleYSize));
-
-            do
-            {
-                radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 2.1 + 12)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
-
-            }while (radius.compareTo(BigDecimal.ZERO) <= 0);
-
-            createdQD = new QuantumDot(x, y, radius, radius, m_timeStep, captureTime, escapeTime);
-
-            while(!validPosition(createdQD, p_existingQDs))
-            {
-                x = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleXSize));
-                y = formatBigDecimal((new BigDecimal(p_randomGenerator.nextDouble())).multiply(m_sampleYSize));
-
-                do
-                {
-                    radius = formatBigDecimal((new BigDecimal(p_randomGenerator.nextGaussian() * 2.1 + 12)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
-
-                }while (radius.compareTo(BigDecimal.ZERO) <= 0);
-
-                createdQD = new QuantumDot(x, y, radius, radius, m_timeStep, captureTime, escapeTime);
-            }
-        } 
-        catch (ArrayIndexOutOfBoundsException|IOException|DataFormatException ex)
-        {
-            Logger.getLogger(GeneratorManager.class.getName()).log(Level.SEVERE, "Error in capture time file.", ex);
-        }
-        
-        return createdQD;
-    }
-    
-    private boolean validPosition(QuantumDot p_testedQD, List<QuantumDot> p_existingQDs)
-    {
-        boolean valid = true;
-        
-        for (QuantumDot QD: p_existingQDs)
-        {
-            valid &= p_testedQD.getRadius().add(QD.getRadius()).compareTo(p_testedQD.getDistance(QD.getX(), QD.getY())) < 0;
-        }
-        
-        return valid;
     }
     
     @Override
@@ -330,10 +218,10 @@ public class GeneratorManager implements Runnable
                 //sending the new data to the visualisation interface 
                 m_output.logElectrons(currentELectronList);
                 m_output.logTime(timePassed);
-                m_output.logQDs(p_QDList);
+                m_output.logQDs(m_QDList);
                 
                 //cleaning the recombined QD
-                for (QuantumDot QD: p_QDList)
+                for (QuantumDot QD: m_QDList)
                 {
                     QD.resetRecombine();
                 }
@@ -347,7 +235,7 @@ public class GeneratorManager implements Runnable
         }
     }
     
-    static BigDecimal formatBigDecimal(BigDecimal p_toFormat)
+    public static BigDecimal formatBigDecimal(BigDecimal p_toFormat)
     {
         return p_toFormat.stripTrailingZeros();
     }

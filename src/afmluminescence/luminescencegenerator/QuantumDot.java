@@ -206,11 +206,8 @@ public class QuantumDot extends AbsorberObject
     {
         double u02 = (effectiveMass.multiply(size.pow(2)).multiply(bandOffset).divide((new BigDecimal(2)).multiply(PhysicsTools.hbar.pow(2)), MathContext.DECIMAL128)).doubleValue();
         
-        double vtan = Math.random()*Math.PI/2;
-        while (u02 - Math.pow(vtan, 2) < 0)
-        {
-            vtan = Math.random()*Math.PI/2;
-        }
+        //vtan has two constrains: it has to be between 0 and PI/2, and u02 - vtan^2 > 0
+        double vtan = Math.random()*Double.min(Math.PI/2, Math.sqrt(u02));
         double error = 1E-50;
         
         double vprevtan = 0;

@@ -66,7 +66,8 @@ public class SimulationSorter
         //doing the same for the energies, in 50 intervals
         BigDecimal minEnergy = p_energiesList.get(0);
         BigDecimal maxEnergy = p_energiesList.get(p_energiesList.size() - 1);
-        BigDecimal energyInterval = (maxEnergy.subtract(minEnergy)).divide(new BigDecimal("50"), MathContext.DECIMAL128);
+        BigDecimal energyInterval = (maxEnergy.subtract(minEnergy)).divide(new BigDecimal("100"), MathContext.DECIMAL128);
+        BigDecimal maxCounts = BigDecimal.ZERO;
         int nInf = 0;
         int nSup = 0;
         for (BigDecimal currentEnergy = minEnergy ; currentEnergy.compareTo(maxEnergy) == -1 ; currentEnergy = currentEnergy.add(energyInterval))
@@ -89,15 +90,22 @@ public class SimulationSorter
                 p_energiesList.remove(0);
             }
             
+            BigDecimal nEnergyBig = new BigDecimal(nEnergy);
             m_energies.put(currentEnergy, new BigDecimal(nEnergy));
+            
+            if (nEnergyBig.compareTo(maxCounts) > 0)
+            {
+                maxCounts = nEnergyBig;
+            }
         }
-        m_energyFunction = new ContinuousFunction(m_energies);
         
-//        System.out.println("Recomined with energies smaller than 1.0 eV: " + nInf);
-//        System.out.println("Recomined with energies higher than 1.0 eV: " + nSup);
-        System.out.println(((PhysicsTools.h.multiply(PhysicsTools.c)).divide(m_energyFunction.maximum().get("abscissa"), MathContext.DECIMAL128)).divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128));
-        System.out.println((m_energyFunction.integrate(m_energyFunction.start(), m_energyFunction.maximum().get("abscissa"))).divide(m_energyFunction.integrate(), MathContext.DECIMAL128));
-        System.out.println((m_energyFunction.integrate(m_energyFunction.maximum().get("abscissa"), m_energyFunction.end())).divide(m_energyFunction.integrate(), MathContext.DECIMAL128));
+        //normalisation
+        for (BigDecimal energy: m_energies.keySet())
+        {
+            m_energies.put(energy, m_energies.get(energy).divide(maxCounts, MathContext.DECIMAL128));
+        }
+        
+        m_energyFunction = new ContinuousFunction(m_energies);
     }
     
     public void saveToFile(File timeFile, File energyFile) throws IOException
@@ -139,5 +147,10 @@ public class SimulationSorter
         energyWriter.close();
         
         System.out.println("Simulation finished!");
+    }
+    
+    public ContinuousFunction getLuminescence ()
+    {
+        return new ContinuousFunction(m_energyFunction);
     }
 }

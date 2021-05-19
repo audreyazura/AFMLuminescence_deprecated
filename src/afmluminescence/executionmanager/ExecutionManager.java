@@ -43,7 +43,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -60,10 +59,14 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
 {
     private final BigDecimal m_scaleX;
     private final BigDecimal m_scaleY;
+    private final BigDecimal m_timeStep = new BigDecimal("1e-12");
     private final ContinuousFunction m_luminescence;
+    private final ContinuousFunction m_captureTimes;
+    private final ContinuousFunction m_escapeTimes;
     private final DrawingBuffer m_buffer;
     private final GUIManager m_gui;
-    private final List<QuantumDot> m_QDList = new ArrayList<>();
+    private final int m_nElectron = 100000;
+    private List<QuantumDot> m_QDList = new ArrayList<>();
     
     public ExecutionManager (GUIManager p_gui, DrawingBuffer p_buffer, List<String> p_filesPaths, BigDecimal p_sampleXSize, BigDecimal p_sampleYSize, BigDecimal p_scaleX, BigDecimal p_scaleY)
     {
@@ -118,14 +121,15 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
         
         //generating the QDs to be send and starting the simulation
         String qdsPath = p_filesPaths.get(1);
-        BigDecimal timeStep = new BigDecimal("1e-12");
+        ContinuousFunction tempCaptureTimes = new ContinuousFunction();
+        ContinuousFunction tempEscapeTimes = new ContinuousFunction();
         try
         {
             //getting the functions giving the capture time, escape time and recombination time as a function of the size of the QD.
             //capture time reference: https://aip.scitation.org/doi/10.1063/1.1512694
             //escape time reference: https://aip.scitation.org/doi/10.1063/1.4824469
-            ContinuousFunction captureTimes = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/CaptureProba/ElectronCaptureTime.scsv"))).getFunction();
-            ContinuousFunction escapeTimes = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/EscapeProba/EscapeTime-10^-17cm^-3.scsv"))).getFunction();
+            tempCaptureTimes = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/CaptureProba/ElectronCaptureTime.scsv"))).getFunction();
+            tempEscapeTimes = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/EscapeProba/EscapeTime-10^-17cm^-3.scsv"))).getFunction();
             
             if (qdsPath.equals(""))
             {
@@ -150,7 +154,7 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
 
                         }while (radius.compareTo(BigDecimal.ZERO) <= 0);
 
-                        createdQD = new QuantumDot(x, y, radius, radius, timeStep, captureTimes, escapeTimes);
+                        createdQD = new QuantumDot(x, y, radius, radius, m_timeStep, tempCaptureTimes, tempEscapeTimes);
 
                     }while(!validPosition(createdQD, m_QDList));
                     
@@ -182,7 +186,7 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
                         BigDecimal radius = GeneratorManager.formatBigDecimal(((new BigDecimal(lineSplit[2].strip())).divide(new BigDecimal("2"), MathContext.DECIMAL128)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
                         BigDecimal height = GeneratorManager.formatBigDecimal((new BigDecimal(lineSplit[3].strip())).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
 
-                        QuantumDot currentQD = new QuantumDot(x, y, radius, height, timeStep, captureTimes, escapeTimes);
+                        QuantumDot currentQD = new QuantumDot(x, y, radius, height, m_timeStep, tempCaptureTimes, tempEscapeTimes);
                         m_QDList.add(currentQD);
                     }
                 }
@@ -191,13 +195,15 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
             logQDs(m_QDList);
             
             //Starting the simulation
-            (new Thread(new GeneratorManager(this, this, 100, new ArrayList(m_QDList), new BigDecimal("300"), timeStep, p_sampleXSize, p_sampleYSize))).start();
+            (new Thread(new GeneratorManager(this, this, m_nElectron, new ArrayList(m_QDList), new BigDecimal("300"), m_timeStep, p_sampleXSize, p_sampleYSize))).start();
         }
         catch (DataFormatException|IOException ex)
         {
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
         
+        m_captureTimes = tempCaptureTimes;
+        m_escapeTimes = tempEscapeTimes;
     }
     
     private boolean validPosition(QuantumDot p_testedQD, List<QuantumDot> p_existingQDs)
@@ -279,8 +285,6 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
             }
         }
         
-        
-        
         SimulationSorter sorter = new SimulationSorter(new ArrayList(recombinationTimes), new ArrayList(recombinationEnergies));
         
         try
@@ -294,15 +298,34 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
         
         SimulationJudge judge = new SimulationJudge(m_luminescence, sorter.getLuminescence());
         
-        try
+        if (judge.maximumMatch() && judge.shapeMatch())
         {
-            Runtime commandPrompt = Runtime.getRuntime();
-            commandPrompt.exec("gnuplot");
-            showResults(commandPrompt);
+            try
+            {
+                Runtime commandPrompt = Runtime.getRuntime();
+                commandPrompt.exec("gnuplot");
+                showResults(commandPrompt);
+            }
+            catch (IOException ex)
+            {
+                Logger.getLogger(ExecutionManager.class.getName()).log(Level.WARNING, "Gnuplot is missing.", ex);
+            }
         }
-        catch (IOException ex)
+        else
         {
-            Logger.getLogger(ExecutionManager.class.getName()).log(Level.WARNING, "Gnuplot is missing.", ex);
+            if (!judge.maximumMatch())
+            {
+                ArrayList<QuantumDot> oldQDList = new ArrayList(m_QDList);
+                m_QDList = new ArrayList<>();
+            
+                System.out.println("ID\tx\ty\tradius\theight\tenergy");
+                int i = 1;
+                for (QuantumDot oldQD: oldQDList)
+                {
+                    m_QDList.add(oldQD.copyWithSizeChange(judge.maximumRatio(), m_timeStep, m_captureTimes, m_escapeTimes));
+                    System.out.println(i++ + "\t" + oldQD.copyWithSizeChange(judge.maximumRatio(), m_timeStep, m_captureTimes, m_escapeTimes));
+                }
+            }
         }
     }
     

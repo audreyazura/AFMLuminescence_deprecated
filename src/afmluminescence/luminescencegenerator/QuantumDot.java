@@ -204,7 +204,6 @@ public class QuantumDot extends AbsorberObject
      */
     private BigDecimal energyParameter (BigDecimal size, BigDecimal bandOffset, BigDecimal effectiveMass)
     {
-        double halfpi = (BigDecimalMath.pi(MathContext.DECIMAL128).divide(new BigDecimal(2), MathContext.DECIMAL128)).doubleValue();
         double u02 = (effectiveMass.multiply(size.pow(2)).multiply(bandOffset).divide((new BigDecimal(2)).multiply(PhysicsTools.hbar.pow(2)), MathContext.DECIMAL128)).doubleValue();
         
         //vtan have two constraints: it has to be between 0 and PI/2, and u02 - vtan^2 have to be positive
@@ -222,10 +221,10 @@ public class QuantumDot extends AbsorberObject
             double fderivvi = 2 * vtan * (1 + (vtan * tangent / (Math.pow(Math.cos(vtan), 2))) + Math.pow(tangent, 2));
             
             vtan = Math.abs(vprevtan - (fvi / fderivvi));
-            while (vtan >= halfpi)
+            while (vtan >= Math.PI/2)
             {
                 //vi has to be between 0 and pi/2
-                vtan = vtan - halfpi;
+                vtan = vtan - Math.PI/2;
             }
             
             counter += 1;

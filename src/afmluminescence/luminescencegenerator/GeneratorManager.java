@@ -16,14 +16,9 @@
  */
 package afmluminescence.luminescencegenerator;
 
-import afmluminescence.executionmanager.SCSVLoader;
-import com.github.audreyazura.commonutils.ContinuousFunction;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -33,10 +28,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 
 /**
@@ -52,6 +47,7 @@ public class GeneratorManager implements Runnable
     private final ImageBuffer m_output;
     private final int m_nElectrons;
     private final List<QuantumDot> m_QDList;
+    private final Map<Electron, BigDecimal> m_finalElectronTime = new HashMap<>();
     
     //a map of the abscissa, separated in column, containing sets of QD present at that abscissa
     private final HashMap<BigInteger, Set<QuantumDot>> m_map = new HashMap<>();
@@ -167,7 +163,6 @@ public class GeneratorManager implements Runnable
         BigDecimal timePassed = BigDecimal.ZERO;
         m_output.logTime(timePassed);
         List<Electron> currentELectronList;
-        HashMap<Electron, BigDecimal> recombinedElectrons = new HashMap<>();
         boolean allFinished = false;
         try
         {
@@ -200,9 +195,9 @@ public class GeneratorManager implements Runnable
                     {
                         if (electron.isRecombined())
                         {
-                            if (!recombinedElectrons.containsKey(electron))
+                            if (!m_finalElectronTime.containsKey(electron))
                             {
-                                recombinedElectrons.put(electron, timePassed);
+                                m_finalElectronTime.put(electron, timePassed);
                             }
                         }
                         else
@@ -226,13 +221,21 @@ public class GeneratorManager implements Runnable
                     QD.resetRecombine();
                 }
             }
-            
-            m_handler.sendResults(recombinedElectrons);
         }
         catch (InterruptedException ex)
         {
             Logger.getLogger(GeneratorManager.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+    
+    public HashMap<Electron, BigDecimal> getFinalElectronList()
+    {
+        if (m_finalElectronTime.keySet().size() != m_nElectrons)
+        {
+            throw new IllegalStateException("Calculation not yet finished.");
+        }
+        
+        return new HashMap(m_finalElectronTime);
     }
     
     public static BigDecimal formatBigDecimal(BigDecimal p_toFormat)

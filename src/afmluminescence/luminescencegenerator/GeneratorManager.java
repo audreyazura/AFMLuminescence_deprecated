@@ -54,9 +54,6 @@ public class GeneratorManager implements Runnable
     
     //this thread Random Generator
     private final PcgRSFast m_randomGenerator = new PcgRSFast();
-    
-    private final ResultHandler m_handler;
-    
     public GeneratorManager ()
     {
         m_sampleXSize = BigDecimal.ZERO;
@@ -65,14 +62,12 @@ public class GeneratorManager implements Runnable
         m_timeStep = BigDecimal.ZERO;;
         m_output = null;
         m_nElectrons = 0;
-        m_handler = null;
         m_QDList = new ArrayList<QuantumDot>();
     }
     
-    public GeneratorManager (ImageBuffer p_buffer, ResultHandler p_handler, int p_nElectron, List<QuantumDot> p_QDList, BigDecimal p_temperature, BigDecimal p_timeStep, BigDecimal p_sampleX, BigDecimal p_sampleY) throws DataFormatException, FileNotFoundException, IOException
+    public GeneratorManager (ImageBuffer p_buffer, int p_nElectron, List<QuantumDot> p_QDList, BigDecimal p_temperature, BigDecimal p_timeStep, BigDecimal p_sampleX, BigDecimal p_sampleY) throws DataFormatException, FileNotFoundException, IOException
     {
         m_output = p_buffer;
-        m_handler = p_handler;
         m_nElectrons = p_nElectron;
         m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
         m_timeStep = p_timeStep;

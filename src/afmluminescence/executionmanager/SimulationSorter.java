@@ -35,7 +35,6 @@ import java.util.TreeSet;
  */
 public class SimulationSorter
 {
-    private final ContinuousFunction m_timeFunction;
     private final ContinuousFunction m_energyFunction;
     private final HashMap<BigDecimal, BigDecimal> m_times = new HashMap<>();
     private final HashMap<BigDecimal, BigDecimal> m_energies = new HashMap<>();
@@ -61,7 +60,6 @@ public class SimulationSorter
             
             m_times.put(currentTime, new BigDecimal(nRecomb));
         }
-        m_timeFunction = new ContinuousFunction(m_times);
         
         //doing the same for the energies, in 50 intervals
         BigDecimal minEnergy = p_energiesList.get(0);
@@ -149,7 +147,7 @@ public class SimulationSorter
         System.out.println("Simulation finished!");
     }
     
-    public ContinuousFunction getLuminescence ()
+    public ContinuousFunction getLuminescence()
     {
         return new ContinuousFunction(m_energyFunction);
     }

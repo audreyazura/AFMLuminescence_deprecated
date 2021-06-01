@@ -30,12 +30,14 @@ public class DrawingBuffer
     private final BigDecimal m_scaleX;
     private final BigDecimal m_scaleY;
     
+    private volatile boolean m_reinitialisationRequested = false;
     private volatile List<ObjectToDraw> m_listMoving = new ArrayList<>();
     private volatile List<ObjectToDraw> m_listFixed = new ArrayList<>();
     private volatile String m_timePassed = "0";
     
-    private static Object m_movingLock = new Object();
-    private static Object m_fixedLock = new Object();
+    private static Object m_fixedObjectsLock = new Object();
+    private static Object m_movingObjectsLock = new Object();
+    private static Object m_reinitialisationRequestLock = new Object();
     private static Object m_timeLock = new Object();
     
     public DrawingBuffer (BigDecimal p_scaleX, BigDecimal p_scaleY)
@@ -46,7 +48,7 @@ public class DrawingBuffer
     
     public ArrayList<ObjectToDraw> downloadMoving()
     {
-        synchronized(m_movingLock)
+        synchronized(m_movingObjectsLock)
         {
             if (m_listMoving.size() > 0)
             {
@@ -61,7 +63,7 @@ public class DrawingBuffer
     
     public ArrayList<ObjectToDraw> downloadFixed()
     {
-        synchronized(m_fixedLock)
+        synchronized(m_fixedObjectsLock)
         {
             if (m_listFixed.size() > 0)
             {
@@ -71,6 +73,16 @@ public class DrawingBuffer
             {
                 return new ArrayList<>();
             }
+        }
+    }
+    
+    public boolean hasToReinitialize()
+    {
+        synchronized(m_reinitialisationRequestLock)
+        {
+            boolean answer = m_reinitialisationRequested;
+            m_reinitialisationRequested = false;
+            return answer;
         }
     }
     
@@ -84,7 +96,7 @@ public class DrawingBuffer
     
     public void logMoving(List<ObjectToDraw> p_listToDraw)
     {
-        synchronized(m_movingLock)
+        synchronized(m_movingObjectsLock)
         {
             m_listMoving = new ArrayList<>(p_listToDraw);
         }
@@ -94,7 +106,7 @@ public class DrawingBuffer
     //WARNING: ONLY THE LAST QDS TO HAVE RECOMBINED SHOWN AT THE MOMENT
     public void logFixed (List<ObjectToDraw> p_listToDraw)
     {
-        synchronized(m_fixedLock)
+        synchronized(m_fixedObjectsLock)
         {
             m_listFixed = new ArrayList<>(p_listToDraw);
         }
@@ -105,6 +117,14 @@ public class DrawingBuffer
         synchronized(m_timeLock)
         {
             m_timePassed = (p_time.divide(PhysicsTools.UnitsPrefix.PICO.getMultiplier())).stripTrailingZeros().toPlainString();
+        }
+    }
+    
+    public void requestReinitialisation()
+    {
+        synchronized(m_reinitialisationRequestLock)
+        {
+            m_reinitialisationRequested = true;
         }
     }
 }

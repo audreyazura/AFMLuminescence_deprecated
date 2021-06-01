@@ -53,44 +53,44 @@ public class GUIManager extends Application
     
     private void drawAnimated()
     {
+        //reinitialising canvas
         m_canvasPainter.clearRect(0, 0, m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
         m_QDPainter.clearRect(0, 0, m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
-        
-        ArrayList<ObjectToDraw> electrons = m_buffer.downloadMoving();
-        String time = m_buffer.getTimePassed();
-            
-        if (electrons.size() > 0)
-        {
-            for(ObjectToDraw electronToDraw: electrons)
-            {
-                m_canvasPainter.setFill(electronToDraw.getColor());
-                double xDrawing = electronToDraw.getX().doubleValue();
-                double yDrawing = electronToDraw.getY().doubleValue();
-                double radius = electronToDraw.getRadius();
-                m_canvasPainter.fillOval(xDrawing - radius, yDrawing - radius, radius * 2, radius * 2);
-            }
-            m_canvasPainter.setFill(Color.TRANSPARENT);
-        }
-        
-        for (ObjectToDraw QDToDraw: m_buffer.downloadFixed())
-        {
-            m_QDPainter.setFill(QDToDraw.getColor());
-            double xDrawing = QDToDraw.getX().doubleValue();
-            double yDrawing = QDToDraw.getY().doubleValue();
-            double diameter = QDToDraw.getRadius() * 2;
-            m_QDPainter.fillOval(xDrawing, yDrawing, diameter, diameter);
-        }
         
         m_timePainter.clearRect(120, 0, 100, 30);
         m_timePainter.setFill(Color.BLACK);
         m_timePainter.fillRect(115, 0, 100, 30);
-        m_timePainter.setFill(Color.WHITE);
-        m_timePainter.fillText(time + " ps", 120, 20);
-    }
-    
-    public void startVisualizer(String[] args)
-    {
-        launch(args);
+        
+        if (!m_buffer.hasToReinitialize())
+        {
+            ArrayList<ObjectToDraw> electrons = m_buffer.downloadMoving();
+            String time = m_buffer.getTimePassed();
+            
+            if (electrons.size() > 0)
+            {
+                for(ObjectToDraw electronToDraw: electrons)
+                {
+                    m_canvasPainter.setFill(electronToDraw.getColor());
+                    double xDrawing = electronToDraw.getX().doubleValue();
+                    double yDrawing = electronToDraw.getY().doubleValue();
+                    double radius = electronToDraw.getRadius();
+                    m_canvasPainter.fillOval(xDrawing - radius, yDrawing - radius, radius * 2, radius * 2);
+                }
+                m_canvasPainter.setFill(Color.TRANSPARENT);
+            }
+
+            for (ObjectToDraw QDToDraw: m_buffer.downloadFixed())
+            {
+                m_QDPainter.setFill(QDToDraw.getColor());
+                double xDrawing = QDToDraw.getX().doubleValue();
+                double yDrawing = QDToDraw.getY().doubleValue();
+                double diameter = QDToDraw.getRadius() * 2;
+                m_QDPainter.fillOval(xDrawing, yDrawing, diameter, diameter);
+            }
+
+            m_timePainter.setFill(Color.WHITE);
+            m_timePainter.fillText(time + " ps", 120, 20);
+        }
     }
     
     public void showPicture(Image p_picture, String p_title, String p_position)
@@ -113,6 +113,11 @@ public class GUIManager extends Application
         pictureStage.setX(pictureStage.getX() + shift);
     }
     
+    public void startVisualizer(String[] args)
+    {
+        launch(args);
+    }
+    
     @Override
     public void start (Stage stage)
     {
@@ -128,7 +133,7 @@ public class GUIManager extends Application
         DrawingBuffer buffer = new DrawingBuffer(scaleX, scaleY);
         m_buffer = buffer;
         
-        new ExecutionManager(this, buffer, getParameters().getRaw(), m_sampleXSize, m_sampleYSize, scaleX, scaleY);
+        (new Thread(new ExecutionManager(this, buffer, getParameters().getRaw(), m_sampleXSize, m_sampleYSize, scaleX, scaleY))).start();
         
         Canvas animationCanvas = new Canvas(m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
         m_canvasPainter = animationCanvas.getGraphicsContext2D();
@@ -167,7 +172,6 @@ public class GUIManager extends Application
                     Duration.seconds(0),
                     event -> drawAnimated()),
             new KeyFrame(Duration.millis(500))
-//            new KeyFrame(Duration.millis(30))
         );
         animation.setCycleCount(Timeline.INDEFINITE);
         animation.play();

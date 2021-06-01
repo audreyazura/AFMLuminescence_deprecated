@@ -50,36 +50,44 @@ public class ResultHandler implements Runnable
     @Override
     public void run()
     {
-        HashMap<Electron, BigDecimal> results = new HashMap<>();
-        
-        while (results.isEmpty())
+        while(true)
         {
-            try
+            if (m_simulator != null)
             {
-                results = m_simulator.getFinalElectronList();
-            }
-            catch (IllegalStateException ex)
-            {
-                Logger.getLogger(ResultHandler.class.getName()).log(Level.FINER, ex.getMessage(), ex);
+                System.out.println(m_simulator);
+                HashMap<Electron, BigDecimal> results = new HashMap<>();
+                
+                while (results.isEmpty())
+                {
+                    try
+                    {
+                        results = m_simulator.getFinalElectronList();
+                    }
+                    catch (IllegalStateException ex)
+                    {
+                        Logger.getLogger(ResultHandler.class.getName()).log(Level.FINER, ex.getMessage(), ex);
+                    }
+                }
+
+                List<BigDecimal> recombinationTimes = new ArrayList(results.values());
+                List<BigDecimal> recombinationEnergies = new ArrayList<>();
+
+                for (Electron el: results.keySet())
+                {
+                    try
+                    {
+                        recombinationEnergies.add(el.getRecombinationEnergy());
+                    }
+                    catch (AbsentInformationException ex)
+                    {
+                        Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+                
+                m_simulator = null;
+                m_manager.computeResults(recombinationEnergies, recombinationTimes);
             }
         }
-        
-        List<BigDecimal> recombinationTimes = new ArrayList(results.values());
-        List<BigDecimal> recombinationEnergies = new ArrayList<>();
-        
-        for (Electron el: results.keySet())
-        {
-            try
-            {
-                recombinationEnergies.add(el.getRecombinationEnergy());
-            }
-            catch (AbsentInformationException ex)
-            {
-                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        
-        m_manager.computeResults(recombinationEnergies, recombinationTimes);
     }
     
     public void initializeTrackedGenerator (GeneratorManager p_simulator)

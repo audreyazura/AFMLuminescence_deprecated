@@ -18,7 +18,6 @@ package afmluminescence.executionmanager;
 
 import afmluminescence.guimanager.DrawingBuffer;
 import afmluminescence.guimanager.GUIManager;
-import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.GeneratorManager;
 import static afmluminescence.luminescencegenerator.GeneratorManager.formatBigDecimal;
 import afmluminescence.luminescencegenerator.QuantumDot;
@@ -50,8 +49,10 @@ import javafx.scene.image.Image;
  *
  * @author audreyazura
  */
-public class ExecutionManager
+public class ExecutionManager implements Runnable
 {
+    private final BigDecimal m_sampleXSize;
+    private final BigDecimal m_sampleYSize;
     private final BigDecimal m_scaleX;
     private final BigDecimal m_scaleY;
     private final BigDecimal m_timeStep = new BigDecimal("1e-12");
@@ -60,19 +61,25 @@ public class ExecutionManager
     private final ContinuousFunction m_escapeTimes;
     private final DrawingBuffer m_buffer;
     private final GUIManager m_gui;
-    private final int m_nElectron = 100;
+    private final int m_maxLoop;
+    private final int m_nElectron = 100000;
     private final PcgRSFast m_RNGenerator = new PcgRSFast();
     private final ResultHandler m_resultHandler;
     private final Thread m_handlerThread;
+    private int m_loopCounter = 0;
     private List<QuantumDot> m_QDList = new ArrayList<>();
     
     public ExecutionManager (GUIManager p_gui, DrawingBuffer p_buffer, List<String> p_filesPaths, BigDecimal p_sampleXSize, BigDecimal p_sampleYSize, BigDecimal p_scaleX, BigDecimal p_scaleY)
     {
+        m_sampleXSize = p_sampleXSize;
+        m_sampleYSize = p_sampleYSize;
         m_scaleX = p_scaleX;
         m_scaleY = p_scaleY;
         
         m_gui = p_gui;
         m_buffer = p_buffer;
+        
+        m_maxLoop = 2;
         
         HashMap<BigDecimal, BigDecimal> lumValues = new HashMap<>();
         BigDecimal maxCounts = BigDecimal.ZERO;
@@ -205,45 +212,9 @@ public class ExecutionManager
         //creating the handler that will check on the simulation
         m_resultHandler = new ResultHandler(this);
         m_handlerThread = new Thread(m_resultHandler);
-
-        //Starting the simulation
-        launchCalculation(p_sampleXSize, p_sampleYSize);
     }
     
-    public void computeResults(List<BigDecimal> p_recombinationEnergies, List<BigDecimal> p_recombinationTimes)
-    {
-        SimulationSorter sorter = new SimulationSorter(new ArrayList(p_recombinationTimes), new ArrayList(p_recombinationEnergies));
-        
-        m_QDList = (new QDFitter(m_QDList, m_timeStep, m_captureTimes, m_escapeTimes, m_luminescence, sorter)).getFittedQDs();
-        
-        try
-        {
-            sorter.saveToFile(new File("Results/TimeResolved.dat"), new File("Results/Spectra.dat"));
-        }
-        catch (IOException ex)
-        {
-            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
-        try
-        {
-            Runtime commandPrompt = Runtime.getRuntime();
-            commandPrompt.exec("gnuplot");
-            showResults(commandPrompt);
-        }
-        catch (IOException ex)
-        {
-            Logger.getLogger(ExecutionManager.class.getName()).log(Level.WARNING, "Gnuplot is missing.", ex);
-        }
-
-        System.out.println("x (m)\ty (m)\tradius (m)\theight (m)\tenergy (J)");
-        for (QuantumDot qd: m_QDList)
-        {
-            System.out.println(qd);
-        }
-    }
-    
-    private void launchCalculation(BigDecimal p_sampleXSize, BigDecimal p_sampleYSize)
+    private void launchCalculation()
     {
         ImageInterpretator GUICommunicator = new ImageInterpretator(m_scaleX, m_scaleY, m_buffer);
         GUICommunicator.logQDs(m_QDList);
@@ -251,12 +222,11 @@ public class ExecutionManager
         GeneratorManager luminescenceGenerator = new GeneratorManager();
         try
         {
-            luminescenceGenerator = new GeneratorManager(GUICommunicator, m_nElectron, new ArrayList(m_QDList), new BigDecimal("300"), m_timeStep, p_sampleXSize, p_sampleYSize);
+            luminescenceGenerator = new GeneratorManager(GUICommunicator, m_nElectron, new ArrayList(m_QDList), new BigDecimal("300"), m_timeStep, m_sampleXSize, m_sampleYSize);
             Thread generatorThread = new Thread(luminescenceGenerator);
-            m_resultHandler.initializeTrackedGenerator(luminescenceGenerator);
             
             generatorThread.start();
-            m_handlerThread.start();
+            m_resultHandler.initializeTrackedGenerator(luminescenceGenerator);
         }
         catch (DataFormatException|IOException ex)
         {
@@ -343,5 +313,55 @@ public class ExecutionManager
         {
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+    
+    void computeResults(List<BigDecimal> p_recombinationEnergies, List<BigDecimal> p_recombinationTimes)
+    {
+        SimulationSorter sorter = new SimulationSorter(new ArrayList(p_recombinationTimes), new ArrayList(p_recombinationEnergies));
+        QDFitter fit = new QDFitter(m_QDList, m_timeStep, m_captureTimes, m_escapeTimes, m_luminescence, sorter);
+        
+        m_loopCounter += 1;
+        
+        if (fit.isGoodFit() || m_loopCounter >= m_maxLoop)
+        {
+            try
+            {
+                sorter.saveToFile(new File("Results/TimeResolved.dat"), new File("Results/Spectra.dat"));
+            }
+            catch (IOException ex)
+            {
+                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+            try
+            {
+                Runtime commandPrompt = Runtime.getRuntime();
+                commandPrompt.exec("gnuplot");
+                showResults(commandPrompt);
+            }
+            catch (IOException ex)
+            {
+                Logger.getLogger(ExecutionManager.class.getName()).log(Level.WARNING, "Gnuplot is missing.", ex);
+            }
+
+            System.out.println("x (m)\ty (m)\tradius (m)\theight (m)\tenergy (J)");
+            for (QuantumDot qd: m_QDList)
+            {
+                System.out.println(qd);
+            }
+        }
+        else
+        {
+            m_QDList = fit.getFittedQDs();
+            m_buffer.requestReinitialisation();
+            launchCalculation();
+        }
+    }
+    
+    @Override
+    public void run()
+    {
+        m_handlerThread.start();
+        launchCalculation();
     }
 }

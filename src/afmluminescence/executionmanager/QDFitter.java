@@ -16,20 +16,13 @@
  */
 package afmluminescence.executionmanager;
 
-import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.QuantumDot;
 import com.github.audreyazura.commonutils.ContinuousFunction;
 import com.github.kilianB.pcg.fast.PcgRSFast;
-import com.sun.jdi.AbsentInformationException;
-import java.io.File;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -156,5 +149,10 @@ public class QDFitter
     public ArrayList<QuantumDot> getFittedQDs()
     {
         return new ArrayList(m_QDList);
+    }
+    
+    public boolean isGoodFit()
+    {
+        return m_goodFit;
     }
 }

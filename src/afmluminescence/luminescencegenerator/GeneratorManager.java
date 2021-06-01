@@ -47,13 +47,14 @@ public class GeneratorManager implements Runnable
     private final ImageBuffer m_output;
     private final int m_nElectrons;
     private final List<QuantumDot> m_QDList;
-    private final Map<Electron, BigDecimal> m_finalElectronTime = new HashMap<>();
     
     //a map of the abscissa, separated in column, containing sets of QD present at that abscissa
     private final HashMap<BigInteger, Set<QuantumDot>> m_map = new HashMap<>();
     
     //this thread Random Generator
     private final PcgRSFast m_randomGenerator = new PcgRSFast();
+    
+    private volatile Map<Electron, BigDecimal> m_finalElectronTime = new HashMap<>();
     
     public GeneratorManager ()
     {

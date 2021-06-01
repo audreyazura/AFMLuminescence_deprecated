@@ -54,6 +54,7 @@ public class GeneratorManager implements Runnable
     
     //this thread Random Generator
     private final PcgRSFast m_randomGenerator = new PcgRSFast();
+    
     public GeneratorManager ()
     {
         m_sampleXSize = BigDecimal.ZERO;

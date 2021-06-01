@@ -61,11 +61,16 @@ public class ResultHandler implements Runnable
                 {
                     try
                     {
+                        Thread.sleep(500);
                         results = m_simulator.getFinalElectronList();
                     }
                     catch (IllegalStateException ex)
                     {
                         Logger.getLogger(ResultHandler.class.getName()).log(Level.FINER, ex.getMessage(), ex);
+                    }
+                    catch (InterruptedException ex)
+                    {
+                        Logger.getLogger(ResultHandler.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
 

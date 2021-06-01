@@ -18,17 +18,13 @@ package afmluminescence.executionmanager;
 
 import afmluminescence.guimanager.DrawingBuffer;
 import afmluminescence.guimanager.GUIManager;
-import afmluminescence.guimanager.ObjectToDraw;
 import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.GeneratorManager;
 import static afmluminescence.luminescencegenerator.GeneratorManager.formatBigDecimal;
-import afmluminescence.luminescencegenerator.ImageBuffer;
 import afmluminescence.luminescencegenerator.QuantumDot;
-import afmluminescence.luminescencegenerator.ResultHandler;
 import com.github.audreyazura.commonutils.ContinuousFunction;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
-import com.sun.jdi.AbsentInformationException;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -49,13 +45,12 @@ import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 import javafx.application.Platform;
 import javafx.scene.image.Image;
-import javafx.scene.paint.Color;
 
 /**
  *
  * @author audreyazura
  */
-public class ExecutionManager implements ImageBuffer, ResultHandler
+public class ExecutionManager
 {
     private final BigDecimal m_scaleX;
     private final BigDecimal m_scaleY;
@@ -65,7 +60,10 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
     private final ContinuousFunction m_escapeTimes;
     private final DrawingBuffer m_buffer;
     private final GUIManager m_gui;
-    private final int m_nElectron = 100000;
+    private final int m_nElectron = 100;
+    private final PcgRSFast m_RNGenerator = new PcgRSFast();
+    private final ResultHandler m_resultHandler;
+    private final Thread m_handlerThread;
     private List<QuantumDot> m_QDList = new ArrayList<>();
     
     public ExecutionManager (GUIManager p_gui, DrawingBuffer p_buffer, List<String> p_filesPaths, BigDecimal p_sampleXSize, BigDecimal p_sampleYSize, BigDecimal p_scaleX, BigDecimal p_scaleY)
@@ -131,11 +129,16 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
             tempCaptureTimes = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/CaptureProba/ElectronCaptureTime.scsv"))).getFunction();
             tempEscapeTimes = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/EscapeProba/EscapeTime-10^-17cm^-3.scsv"))).getFunction();
             
+            //making the QD distribution
+            /***********************************************************************************************************
+             *                                                                                                         *
+             * TO DO: STREAMLINE THE QD DISTRIBUTION BY USING THE LIMITS, SUCH AS WHEN CALCULATING THE RADOM VALUE LATER *
+             *                                                                                                         *
+             ***********************************************************************************************************/
             if (qdsPath.equals(""))
             {
                 //QDs are randomly generated with size following a normal distribution
                 int nQDs = 300;
-                PcgRSFast RNGenerator = new PcgRSFast();
                 for (int i = 0 ; i < nQDs ; i += 1)
                 {
                     BigDecimal x;
@@ -145,12 +148,12 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
 
                     do
                     {
-                        x = formatBigDecimal((new BigDecimal(RNGenerator.nextDouble())).multiply(p_sampleXSize));
-                        y = formatBigDecimal((new BigDecimal(RNGenerator.nextDouble())).multiply(p_sampleYSize));
+                        x = formatBigDecimal((new BigDecimal(m_RNGenerator.nextDouble())).multiply(p_sampleXSize));
+                        y = formatBigDecimal((new BigDecimal(m_RNGenerator.nextDouble())).multiply(p_sampleYSize));
 
                         do
                         {
-                            radius = formatBigDecimal((new BigDecimal(RNGenerator.nextGaussian() * 2.1 + 12)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                            radius = formatBigDecimal((new BigDecimal(m_RNGenerator.nextGaussian() * 2.1 + 12)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
 
                         }while (radius.compareTo(BigDecimal.ZERO) <= 0);
 
@@ -191,19 +194,74 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
                     }
                 }
             }
-            
-            logQDs(m_QDList);
-            
-            //Starting the simulation
-            (new Thread(new GeneratorManager(this, this, m_nElectron, new ArrayList(m_QDList), new BigDecimal("300"), m_timeStep, p_sampleXSize, p_sampleYSize))).start();
         }
         catch (DataFormatException|IOException ex)
         {
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
         m_captureTimes = tempCaptureTimes;
         m_escapeTimes = tempEscapeTimes;
+        
+        //creating the handler that will check on the simulation
+        m_resultHandler = new ResultHandler(this);
+        m_handlerThread = new Thread(m_resultHandler);
+
+        //Starting the simulation
+        launchCalculation(p_sampleXSize, p_sampleYSize);
+    }
+    
+    public void computeResults(List<BigDecimal> p_recombinationEnergies, List<BigDecimal> p_recombinationTimes)
+    {
+        SimulationSorter sorter = new SimulationSorter(new ArrayList(p_recombinationTimes), new ArrayList(p_recombinationEnergies));
+        
+        m_QDList = (new QDFitter(m_QDList, m_timeStep, m_captureTimes, m_escapeTimes, m_luminescence, sorter)).getFittedQDs();
+        
+        try
+        {
+            sorter.saveToFile(new File("Results/TimeResolved.dat"), new File("Results/Spectra.dat"));
+        }
+        catch (IOException ex)
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        try
+        {
+            Runtime commandPrompt = Runtime.getRuntime();
+            commandPrompt.exec("gnuplot");
+            showResults(commandPrompt);
+        }
+        catch (IOException ex)
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.WARNING, "Gnuplot is missing.", ex);
+        }
+
+        System.out.println("x (m)\ty (m)\tradius (m)\theight (m)\tenergy (J)");
+        for (QuantumDot qd: m_QDList)
+        {
+            System.out.println(qd);
+        }
+    }
+    
+    private void launchCalculation(BigDecimal p_sampleXSize, BigDecimal p_sampleYSize)
+    {
+        ImageInterpretator GUICommunicator = new ImageInterpretator(m_scaleX, m_scaleY, m_buffer);
+        GUICommunicator.logQDs(m_QDList);
+        
+        GeneratorManager luminescenceGenerator = new GeneratorManager();
+        try
+        {
+            luminescenceGenerator = new GeneratorManager(GUICommunicator, m_nElectron, new ArrayList(m_QDList), new BigDecimal("300"), m_timeStep, p_sampleXSize, p_sampleYSize);
+            Thread generatorThread = new Thread(luminescenceGenerator);
+            m_resultHandler.initializeTrackedGenerator(luminescenceGenerator);
+            
+            generatorThread.start();
+            m_handlerThread.start();
+        }
+        catch (DataFormatException|IOException ex)
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
     
     private boolean validPosition(QuantumDot p_testedQD, List<QuantumDot> p_existingQDs)
@@ -216,117 +274,6 @@ public class ExecutionManager implements ImageBuffer, ResultHandler
         }
         
         return valid;
-    }
-    
-    @Override
-    public void logElectrons(List<Electron> p_listToDraw)
-    {
-        ArrayList<ObjectToDraw> objectList = new ArrayList();
-            
-        for (Electron currentElectron: p_listToDraw)
-        {
-            if (currentElectron.isFree())
-            {
-                BigDecimal radius = new BigDecimal("2");
-                
-                objectList.add(new ObjectToDraw(currentElectron.getX().multiply(m_scaleX).subtract(radius), currentElectron.getY().multiply(m_scaleY).subtract(radius), Color.BLACK, radius.doubleValue()));
-            }
-        }
-        
-        m_buffer.logMoving(objectList);
-    }
-    
-    @Override
-    public void logQDs(List<QuantumDot> p_listToDraw)
-    {
-        ArrayList<ObjectToDraw> objectList = new ArrayList();
-            
-        for (QuantumDot currentQD: p_listToDraw)
-        {
-            BigDecimal radius = currentQD.getRadius().multiply(m_scaleX);
-
-            Color toPaint;
-            if (currentQD.hasRecombined())
-            {
-                toPaint = Color.RED;
-            }
-            else
-            {
-                toPaint = Color.GREEN;
-            }
-
-            objectList.add(new ObjectToDraw(currentQD.getX().multiply(m_scaleX).subtract(radius), currentQD.getY().multiply(m_scaleY).subtract(radius), toPaint, radius.doubleValue()));
-        }
-        
-        m_buffer.logFixed(objectList);
-    }
-    
-    @Override
-    public void logTime(BigDecimal p_time)
-    {
-        m_buffer.logTime(p_time);
-    }
-    
-    @Override
-    public void sendResults(HashMap<Electron, BigDecimal> p_result)
-    {
-        List<BigDecimal> recombinationTimes = new ArrayList(p_result.values());
-        List<BigDecimal> recombinationEnergies = new ArrayList<>();
-        
-        for (Electron el: p_result.keySet())
-        {
-            try
-            {
-                recombinationEnergies.add(el.getRecombinationEnergy());
-            }
-            catch (AbsentInformationException ex)
-            {
-                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        
-        SimulationSorter sorter = new SimulationSorter(new ArrayList(recombinationTimes), new ArrayList(recombinationEnergies));
-        
-        try
-        {
-            sorter.saveToFile(new File("Results/TimeResolved.dat"), new File("Results/Spectra.dat"));
-        }
-        catch (IOException ex)
-        {
-            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
-        SimulationJudge judge = new SimulationJudge(m_luminescence, sorter.getLuminescence());
-        
-        if (judge.maximumMatch() && judge.shapeMatch())
-        {
-            try
-            {
-                Runtime commandPrompt = Runtime.getRuntime();
-                commandPrompt.exec("gnuplot");
-                showResults(commandPrompt);
-            }
-            catch (IOException ex)
-            {
-                Logger.getLogger(ExecutionManager.class.getName()).log(Level.WARNING, "Gnuplot is missing.", ex);
-            }
-        }
-        else
-        {
-            if (!judge.maximumMatch())
-            {
-                ArrayList<QuantumDot> oldQDList = new ArrayList(m_QDList);
-                m_QDList = new ArrayList<>();
-            
-                System.out.println("ID\tx\ty\tradius\theight\tenergy");
-                int i = 1;
-                for (QuantumDot oldQD: oldQDList)
-                {
-                    m_QDList.add(oldQD.copyWithSizeChange(judge.maximumRatio(), m_timeStep, m_captureTimes, m_escapeTimes));
-                    System.out.println(i++ + "\t" + oldQD.copyWithSizeChange(judge.maximumRatio(), m_timeStep, m_captureTimes, m_escapeTimes));
-                }
-            }
-        }
     }
     
     private void showResults (Runtime p_commandPrompt)

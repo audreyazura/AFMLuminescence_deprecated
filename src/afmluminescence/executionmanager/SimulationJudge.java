@@ -81,14 +81,15 @@ public class SimulationJudge
         BigDecimal differenceShapeHighEnergy = simuHighEnergyRatio.subtract(experimentHighEnergyRatio);
         BigDecimal differenceShapeLowEnergy = simuLowEnergyRatio.subtract(experimentLowEnergyRatio);
         
-        //the error should compensate each other. If they don't, an error occured
-        if((differenceShapeHighEnergy.add(differenceShapeLowEnergy)).compareTo(BigDecimal.ZERO) == 0)
+        //the error should compensate each other. If they don't, an error occured. We give ourselves a leeway of 1e-20.
+        if((differenceShapeHighEnergy.add(differenceShapeLowEnergy)).compareTo(new BigDecimal("1e-20")) <= 0)
         {
-            //the absolute error is the same on each side, therefore we can only care on one side
+            //the absolute error is basically the same on each side, therefore we can only care on one side
             m_shapeMatchingHighEnergy = new MatchObject(((differenceShapeHighEnergy.abs()).compareTo(maxErrorShape) <= 0), differenceShapeHighEnergy.toString());
         }
         else
         {
+            System.out.println(simuHighEnergyRatio.add(simuLowEnergyRatio));
             throw new ArithmeticException("Sum of ratioed integral different than 1.");
         }
     }

@@ -324,6 +324,8 @@ public class ExecutionManager implements Runnable
         
         if (fit.isGoodFit() || m_loopCounter >= m_maxLoop)
         {
+            m_resultHandler.stopMonitoring();
+            
             try
             {
                 sorter.saveToFile(new File("Results/TimeResolved.dat"), new File("Results/Spectra.dat"));

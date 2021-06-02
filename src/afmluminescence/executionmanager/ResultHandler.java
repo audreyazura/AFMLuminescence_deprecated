@@ -33,6 +33,7 @@ import java.util.logging.Logger;
 public class ResultHandler implements Runnable
 {
     private final ExecutionManager m_manager;
+    private boolean m_continuousMonitoring = true;
     private GeneratorManager m_simulator;
     
     public ResultHandler ()
@@ -50,7 +51,7 @@ public class ResultHandler implements Runnable
     @Override
     public void run()
     {
-        while(true)
+        while(m_continuousMonitoring)
         {
             if (m_simulator != null)
             {
@@ -98,5 +99,10 @@ public class ResultHandler implements Runnable
     public void initializeTrackedGenerator (GeneratorManager p_simulator)
     {
         m_simulator = p_simulator;
+    }
+    
+    public void stopMonitoring()
+    {
+        m_continuousMonitoring = false;
     }
 }

@@ -55,7 +55,6 @@ public class ResultHandler implements Runnable
         {
             if (m_simulator != null)
             {
-                System.out.println(m_simulator);
                 HashMap<Electron, BigDecimal> results = new HashMap<>();
                 
                 while (results.isEmpty())

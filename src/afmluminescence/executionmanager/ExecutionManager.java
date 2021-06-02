@@ -56,12 +56,14 @@ public class ExecutionManager implements Runnable
     private final BigDecimal m_scaleX;
     private final BigDecimal m_scaleY;
     private final BigDecimal m_timeStep = new BigDecimal("1e-12");
+    private final boolean m_gnuplotInstalled;
     private final ContinuousFunction m_luminescence;
     private final ContinuousFunction m_captureTimes;
     private final ContinuousFunction m_escapeTimes;
     private final DrawingBuffer m_buffer;
+    private final File m_luminescenceFile;
     private final GUIManager m_gui;
-    private final int m_maxLoop;
+    private final int m_maxLoop = 5;
     private final int m_nElectron = 100000;
     private final PcgRSFast m_RNGenerator = new PcgRSFast();
     private final ResultHandler m_resultHandler;
@@ -78,8 +80,6 @@ public class ExecutionManager implements Runnable
         
         m_gui = p_gui;
         m_buffer = p_buffer;
-        
-        m_maxLoop = 2;
         
         HashMap<BigDecimal, BigDecimal> lumValues = new HashMap<>();
         BigDecimal maxCounts = BigDecimal.ZERO;
@@ -123,6 +123,49 @@ public class ExecutionManager implements Runnable
         }
         
         m_luminescence = new ContinuousFunction(lumValues);
+        
+        boolean gnuplotExist;
+        try
+        {
+            //testing if gnuplot is on the computer
+            Runtime.getRuntime().exec("gnuplot");
+            gnuplotExist = true;
+        }
+        catch (IOException ex)
+        {
+            gnuplotExist = false;
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.FINEST, "Gnuplot is missing.", ex);
+        }
+        m_gnuplotInstalled = gnuplotExist;
+        
+        m_luminescenceFile = new File("Results/Luminescence.dat");
+        if (m_gnuplotInstalled)
+        {
+            try
+            {
+                //creating the luminescence file for gnuplot
+                Set<BigDecimal> energySet = m_luminescence.getAbscissa();
+                if (!m_luminescenceFile.getParentFile().isDirectory())
+                {
+                    m_luminescenceFile.getParentFile().mkdirs();
+                }
+                BufferedWriter lumWriter = new BufferedWriter(new FileWriter(m_luminescenceFile));
+                lumWriter.write("Wavelength (nm)\tIntensity (cps)");
+                for (BigDecimal abscissa: energySet)
+                {
+                    BigDecimal wavelengthNano = ((PhysicsTools.h.multiply(PhysicsTools.c)).divide(abscissa, MathContext.DECIMAL128)).divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
+
+                    lumWriter.newLine();
+                    lumWriter.write(wavelengthNano.toPlainString() + "\t" + m_luminescence.getValueAtPosition(abscissa));
+                }
+                lumWriter.flush();
+                lumWriter.close();
+            }
+            catch (IOException ex)
+            {
+                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, "Impossible to create the luminescence file.", ex);
+            }
+        }
         
         //generating the QDs to be send and starting the simulation
         String qdsPath = p_filesPaths.get(1);
@@ -225,6 +268,7 @@ public class ExecutionManager implements Runnable
             luminescenceGenerator = new GeneratorManager(GUICommunicator, m_nElectron, new ArrayList(m_QDList), new BigDecimal("300"), m_timeStep, m_sampleXSize, m_sampleYSize);
             Thread generatorThread = new Thread(luminescenceGenerator);
             
+            System.out.println("Starting simulation " + m_loopCounter);
             generatorThread.start();
             m_resultHandler.initializeTrackedGenerator(luminescenceGenerator);
         }
@@ -246,30 +290,12 @@ public class ExecutionManager implements Runnable
         return valid;
     }
     
-    private void showResults (Runtime p_commandPrompt)
+    private void createPictures (int p_fileIndex)
     {
         try
         {
-            Set<BigDecimal> energySet = m_luminescence.getAbscissa();
-            File lumFile = new File("Results/Luminescence.dat");
-            if (!lumFile.getParentFile().isDirectory())
-            {
-                lumFile.getParentFile().mkdirs();
-            }
-            BufferedWriter lumWriter = new BufferedWriter(new FileWriter(lumFile));
-            lumWriter.write("Wavelength (nm)\tIntensity (cps)");
-            for (BigDecimal abscissa: energySet)
-            {
-                BigDecimal wavelengthNano = ((PhysicsTools.h.multiply(PhysicsTools.c)).divide(abscissa, MathContext.DECIMAL128)).divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
-
-                lumWriter.newLine();
-                lumWriter.write(wavelengthNano.toPlainString() + "\t" + m_luminescence.getValueAtPosition(abscissa));
-            }
-            lumWriter.flush();
-            lumWriter.close();
-            
-            String spectraFile = "Results/Spectra.png";
-            String timeResolvedFile = "Results/TimeResolved.png";
+            String spectraFile = "Results/Spectra" + p_fileIndex + ".png";
+            String timeResolvedFile = "Results/TimeResolved" + p_fileIndex + ".png";
             
             BufferedWriter gnuplotWriter = new BufferedWriter(new FileWriter("Results/.gnuplotScript.gp"));
             gnuplotWriter.write("set terminal png");
@@ -280,7 +306,7 @@ public class ExecutionManager implements Runnable
             gnuplotWriter.newLine();
             gnuplotWriter.write("set output \"" + spectraFile + "\"");
             gnuplotWriter.newLine();
-            gnuplotWriter.write("plot[*:*][0:1.1] \"Results/Spectra.dat\" u 1:2 w line t \"Calculated Lum\", \"Results/Luminescence.dat\" u 1:2 w line t \"Experimental Lum\"");
+            gnuplotWriter.write("plot[*:*][0:1.1] \"Results/Spectra" + p_fileIndex + ".dat\" u 1:2 w line t \"Calculated Lum\", \"" + m_luminescenceFile.getCanonicalPath() + "\" u 1:2 w line t \"Experimental Lum\"");
             gnuplotWriter.newLine();
             gnuplotWriter.write("unset output");
             gnuplotWriter.newLine();
@@ -288,26 +314,14 @@ public class ExecutionManager implements Runnable
             gnuplotWriter.newLine();
             gnuplotWriter.write("set xlabel \"Time (ns)\"");
             gnuplotWriter.newLine();
-            gnuplotWriter.write("plot \"Results/TimeResolved.dat\" u ($1/1000):2 w points t \"Time Resolved Luminescence\"");
+            gnuplotWriter.write("plot \"Results/TimeResolved" + p_fileIndex + ".dat\" u ($1/1000):2 w points t \"Time Resolved Luminescence\"");
             gnuplotWriter.newLine();
             gnuplotWriter.write("unset output");
             gnuplotWriter.flush();
             gnuplotWriter.close();
 
-            p_commandPrompt.exec("gnuplot Results/.gnuplotScript.gp").waitFor();
-            p_commandPrompt.exec("rm Results/.gnuplotScript.gp");
-
-            Platform.runLater(() ->
-            {
-                try
-                {
-                    m_gui.showPicture(new Image(new FileInputStream(spectraFile)), "Spectra", "left");
-                    m_gui.showPicture(new Image(new FileInputStream(timeResolvedFile)), "Time Resolved", "right");
-                } catch (FileNotFoundException ex)
-                {
-                    Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            });
+            Runtime.getRuntime().exec("gnuplot Results/.gnuplotScript.gp").waitFor();
+            Runtime.getRuntime().exec("rm Results/.gnuplotScript.gp");
         } 
         catch (IOException|InterruptedException ex)
         {
@@ -322,34 +336,57 @@ public class ExecutionManager implements Runnable
         
         m_loopCounter += 1;
         
+        //saving the result to files and making pictures out of them if gnuplot is installed
+        try
+        {
+            sorter.saveToFile(new File("Results/TimeResolved" + m_loopCounter + ".dat"), new File("Results/Spectra" + m_loopCounter + ".dat"));
+        }
+        catch (IOException ex)
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        if (m_gnuplotInstalled)
+        {
+            createPictures(m_loopCounter);
+        }
+        
+        //testing if the simulation finished or has to continue
         if (fit.isGoodFit() || m_loopCounter >= m_maxLoop)
         {
             m_resultHandler.stopMonitoring();
-            
-            try
-            {
-                sorter.saveToFile(new File("Results/TimeResolved.dat"), new File("Results/Spectra.dat"));
-            }
-            catch (IOException ex)
-            {
-                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
-            }
-
-            try
-            {
-                Runtime commandPrompt = Runtime.getRuntime();
-                commandPrompt.exec("gnuplot");
-                showResults(commandPrompt);
-            }
-            catch (IOException ex)
-            {
-                Logger.getLogger(ExecutionManager.class.getName()).log(Level.WARNING, "Gnuplot is missing.", ex);
-            }
 
             System.out.println("x (m)\ty (m)\tradius (m)\theight (m)\tenergy (J)");
             for (QuantumDot qd: m_QDList)
             {
                 System.out.println(qd);
+            }
+            
+            if (m_gnuplotInstalled)
+            {
+                //creating a gif of the result if Image Magick is installed
+                try
+                {
+                    Runtime.getRuntime().exec("convert -delay 100 Results/Spectra*.png Results/Spectra.gif");
+                }
+                catch (IOException ex)
+                {
+                    Logger.getLogger(ExecutionManager.class.getName()).log(Level.FINE, "Image Magick not installed.", ex);
+                }
+
+                //showing the final result on screen
+                Platform.runLater(() ->
+                {
+                    try
+                    {
+                        m_gui.showPicture(new Image(new FileInputStream("Results/Spectra" + m_loopCounter + ".png")), "Spectra", "left");
+                        m_gui.showPicture(new Image(new FileInputStream("Results/TimeResolved" + m_loopCounter + ".png")), "Time Resolved", "right");
+                    }
+                    catch (FileNotFoundException ex)
+                    {
+                        Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                });
             }
         }
         else

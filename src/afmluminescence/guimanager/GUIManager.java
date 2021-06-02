@@ -46,6 +46,7 @@ public class GUIManager extends Application
     private BigDecimal m_canvasYWidth;
     private BigDecimal m_sampleXSize;
     private BigDecimal m_sampleYSize;
+    private double m_frameRate = 500; //represent the time between two key frames, in ms
     private DrawingBuffer m_buffer;
     private GraphicsContext m_canvasPainter;
     private GraphicsContext m_QDPainter;
@@ -61,8 +62,13 @@ public class GUIManager extends Application
         m_timePainter.setFill(Color.BLACK);
         m_timePainter.fillRect(115, 0, 100, 30);
         
-        if (!m_buffer.hasToReinitialize())
+        if (m_buffer.hasToReinitialize())
         {
+            m_frameRate = 5000;
+        }
+        else
+        {
+            m_frameRate = 500;
             ArrayList<ObjectToDraw> electrons = m_buffer.downloadMoving();
             String time = m_buffer.getTimePassed();
             
@@ -171,7 +177,7 @@ public class GUIManager extends Application
             new KeyFrame(
                     Duration.seconds(0),
                     event -> drawAnimated()),
-            new KeyFrame(Duration.millis(500))
+            new KeyFrame(Duration.millis(m_frameRate))
         );
         animation.setCycleCount(Timeline.INDEFINITE);
         animation.play();

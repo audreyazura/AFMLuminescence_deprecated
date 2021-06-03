@@ -56,6 +56,8 @@ public class QDFitter
                 //aussi mettre un max et un min dans la forme ?
                 BigDecimal highEnergyDiff = judge.shapeDifferenceRatio();
                 BigDecimal pivotEnergy = p_sorter.getLuminescence().maximum().get("abscissa");
+                BigDecimal highEnergyExperimentalInterval = p_luminescence.end().subtract(p_luminescence.maximum().get("abscissa"));
+                BigDecimal lowEnergyExperimentalInterval = p_luminescence.start().subtract(p_luminescence.maximum().get("abscissa"));
                 
                 ArrayList<QuantumDot> highEnergyQDs = new ArrayList<>();
                 ArrayList<QuantumDot> lowEnergyQDs = new ArrayList<>();
@@ -85,14 +87,13 @@ public class QDFitter
                     BigDecimal numberToSwap = highEnergyDiff.multiply(new BigDecimal(m_QDList.size()));
                     double swapProba = (numberToSwap.doubleValue())/highEnergyQDs.size();
                     
-                    if (swapProba < 0 || swapProba > 1)
+                    if (swapProba < 0)
                     {
                         throw new ArithmeticException("Probability of swapping invalid.");
                     }
                     else
                     {
-                        BigDecimal highEnergyExperimentalInterval = p_luminescence.end().subtract(p_luminescence.maximum().get("abscissa"));
-                        highEnergyQDs = swapQD(highEnergyQDs, highEnergyExperimentalInterval, pivotEnergy, p_timeStep, p_captureTimes, p_escapeTimes, swapProba);
+                        highEnergyQDs = swapQDs(highEnergyQDs, highEnergyExperimentalInterval, pivotEnergy, p_timeStep, p_captureTimes, p_escapeTimes, swapProba);
                     }
                 }
                 else //negative difference
@@ -107,8 +108,31 @@ public class QDFitter
                     }
                     else
                     {
-                        BigDecimal lowEnergyExperimentalInterval = p_luminescence.start().subtract(p_luminescence.maximum().get("abscissa"));
-                        lowEnergyQDs = swapQD(lowEnergyQDs, lowEnergyExperimentalInterval, pivotEnergy, p_timeStep, p_captureTimes, p_escapeTimes, swapProba);
+                        lowEnergyQDs = swapQDs(lowEnergyQDs, lowEnergyExperimentalInterval, pivotEnergy, p_timeStep, p_captureTimes, p_escapeTimes, swapProba);
+                    }
+                }
+                
+                //putting the QD which energy are too far from the maximum in range
+                BigDecimal energyLimit;
+                //high ernergy case
+                energyLimit = pivotEnergy.add(highEnergyExperimentalInterval);
+                for (QuantumDot qd: highEnergyQDs)
+                {
+                    if (qd.getEnergy().compareTo(pivotEnergy.add(energyLimit)) > 0)
+                    {
+                        highEnergyQDs.remove(qd);
+                        highEnergyQDs.add(getQDInEnergyRange(qd, pivotEnergy, highEnergyExperimentalInterval, p_timeStep, p_captureTimes, p_escapeTimes));
+                    }
+                }
+                //low energy case
+                energyLimit = (pivotEnergy.subtract(lowEnergyExperimentalInterval)).max(BigDecimal.ZERO);
+                for (QuantumDot qd: lowEnergyQDs)
+                {
+                    if (qd.getEnergy().compareTo(energyLimit) < 0)
+                    {
+                        lowEnergyQDs.remove(qd);
+                        //the only case where pivotEnergy < lowEnergyExperimentalRange is when the energyLimit get lower to 0 (and thus, is put to 0 by the max in its initialisation)
+                        lowEnergyQDs.add(getQDInEnergyRange(qd, energyLimit, lowEnergyExperimentalInterval.min(pivotEnergy), p_timeStep, p_captureTimes, p_escapeTimes));
                     }
                 }
                 
@@ -120,7 +144,28 @@ public class QDFitter
         }
     }
     
-    private ArrayList<QuantumDot> swapQD (ArrayList<QuantumDot> p_qdToSwap, BigDecimal p_intervalSize, BigDecimal p_pivotEnergy, BigDecimal p_timeStep, ContinuousFunction p_captureTimes, ContinuousFunction p_escapeTimes, double p_swapProba)
+    private QuantumDot getQDInEnergyRange (QuantumDot p_originalQD, BigDecimal p_rangeMin, BigDecimal p_intervalSize, BigDecimal p_timeStep, ContinuousFunction p_captureTimes, ContinuousFunction p_escapeTimes)
+    {
+        BigDecimal newQDEnergy = BigDecimal.ZERO;
+        PcgRSFast RNGenerator = new PcgRSFast();
+        QuantumDot newQD;
+        
+        //we select the new QD energy randomly in the interval ]minEnergy, maxEnergy+intervalSize]. intervalSize can be negative.
+        do
+        {
+            do
+            {
+                newQDEnergy = p_rangeMin.add(p_intervalSize.multiply(new BigDecimal(RNGenerator.nextDouble(true, true))));
+            }while(newQDEnergy.signum() < 0);
+
+            BigDecimal sizeMultiplier = p_originalQD.getEnergy().divide(newQDEnergy, MathContext.DECIMAL128); //energy multiplier = newEnergy / oldEnergy, size multiplier = 1 / (energy multiplier)
+            newQD = p_originalQD.copyWithSizeChange(sizeMultiplier, p_timeStep, p_captureTimes, p_escapeTimes);
+        }while (newQD.getEnergy().compareTo(p_rangeMin) < 0 || newQD.getEnergy().compareTo(p_rangeMin.add(p_intervalSize)) > 0);
+        
+        return newQD;
+    }
+    
+    private ArrayList<QuantumDot> swapQDs (ArrayList<QuantumDot> p_qdToSwap, BigDecimal p_intervalSize, BigDecimal p_pivotEnergy, BigDecimal p_timeStep, ContinuousFunction p_captureTimes, ContinuousFunction p_escapeTimes, double p_swapProba)
     {
         ArrayList<QuantumDot> swappedList = new ArrayList<>();
         PcgRSFast RNGenerator = new PcgRSFast();
@@ -129,15 +174,7 @@ public class QDFitter
         {
             if (RNGenerator.nextDouble() < p_swapProba)
             {
-                //we select the new QD energy randomly in the interval ]maxEnergy, maxEnergy+intervalSize]. intervalSize can be negative.
-                BigDecimal newQDEnergy = BigDecimal.ZERO;
-                do
-                {
-                    newQDEnergy = p_pivotEnergy.add(p_intervalSize.multiply(new BigDecimal(RNGenerator.nextDouble(false, true))));
-                }while(newQDEnergy.signum() < 0);
-                
-                BigDecimal sizeMultiplier = qd.getEnergy().divide(newQDEnergy, MathContext.DECIMAL128); //energy multiplier = newEnergy / oldEnergy, size multiplier = 1 / (energy multiplier)
-                qd = qd.copyWithSizeChange(sizeMultiplier, p_timeStep, p_captureTimes, p_escapeTimes);
+                qd = getQDInEnergyRange(qd, p_pivotEnergy, p_intervalSize, p_timeStep, p_captureTimes, p_escapeTimes);
             }
             
             swappedList.add(qd);

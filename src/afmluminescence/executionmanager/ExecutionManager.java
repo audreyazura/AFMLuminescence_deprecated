@@ -180,11 +180,6 @@ public class ExecutionManager implements Runnable
             tempEscapeTimes = (new SCSVLoader(new File("/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/EscapeProba/EscapeTime-10^-17cm^-3.scsv"))).getFunction();
             
             //making the QD distribution
-            /***********************************************************************************************************
-             *                                                                                                         *
-             * TO DO: STREAMLINE THE QD DISTRIBUTION BY USING THE LIMITS, SUCH AS WHEN CALCULATING THE RADOM VALUE LATER *
-             *                                                                                                         *
-             ***********************************************************************************************************/
             if (qdsPath.equals(""))
             {
                 //QDs are randomly generated with size following a normal distribution

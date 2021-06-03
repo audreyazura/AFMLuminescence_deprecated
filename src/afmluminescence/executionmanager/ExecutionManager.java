@@ -262,13 +262,13 @@ public class ExecutionManager implements Runnable
         ImageInterpretator GUICommunicator = new ImageInterpretator(m_scaleX, m_scaleY, m_buffer);
         GUICommunicator.logQDs(m_QDList);
         
-        GeneratorManager luminescenceGenerator = new GeneratorManager();
+        GeneratorManager luminescenceGenerator;
         try
         {
             luminescenceGenerator = new GeneratorManager(GUICommunicator, m_nElectron, new ArrayList(m_QDList), new BigDecimal("300"), m_timeStep, m_sampleXSize, m_sampleYSize);
             Thread generatorThread = new Thread(luminescenceGenerator);
             
-            System.out.println("Starting simulation " + m_loopCounter);
+            System.out.println("Starting simulation " + (m_loopCounter + 1));
             generatorThread.start();
             m_resultHandler.initializeTrackedGenerator(luminescenceGenerator);
         }

@@ -31,17 +31,22 @@ import java.util.List;
 public class QDFitter
 {
     private final boolean m_goodFit;
-    private final List<QuantumDot> m_QDList = new ArrayList<>();
+    private final List<QuantumDot> m_QDList;
     
     public QDFitter (List<QuantumDot> p_QDList, BigDecimal p_timeStep, ContinuousFunction p_captureTimes, ContinuousFunction p_escapeTimes, ContinuousFunction p_luminescence, SimulationSorter p_sorter)
     {
+        //include the fact that there is QD outside the range in the judge, and distribute it better in the fitting function
         SimulationJudge judge = new SimulationJudge(p_luminescence, p_sorter.getLuminescence());
         m_goodFit = judge.maximumMatch() && judge.shapeMatch();
         
         if (!m_goodFit)
         {
+            m_QDList = new ArrayList<>();
+            
             if (!judge.maximumMatch())
             {
+                System.out.println("Adjusting the position of the maximum.");
+                
                 ArrayList<QuantumDot> oldQDList = new ArrayList(p_QDList);
                 
                 BigDecimal multiplier = BigDecimal.ONE.divide(judge.maximumRatio(), MathContext.DECIMAL128);
@@ -53,7 +58,8 @@ public class QDFitter
             
             if (!judge.shapeMatch())
             {
-                //aussi mettre un max et un min dans la forme ?
+                System.out.println("Adjusting the distribution of QD around the maximum.");
+                
                 BigDecimal highEnergyDiff = judge.shapeDifferenceRatio();
                 BigDecimal pivotEnergy = p_sorter.getLuminescence().maximum().get("abscissa");
                 BigDecimal highEnergyExperimentalInterval = p_luminescence.end().subtract(p_luminescence.maximum().get("abscissa"));
@@ -141,6 +147,11 @@ public class QDFitter
                 m_QDList.addAll(maxEnergyQDs);
                 m_QDList.addAll(highEnergyQDs);
             }
+        }
+        else
+        {
+            m_QDList = new ArrayList(p_QDList);
+            System.out.println("The simulation is in agreement with the experiment, nothing to do.");
         }
     }
     

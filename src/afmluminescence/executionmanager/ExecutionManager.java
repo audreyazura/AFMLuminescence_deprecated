@@ -326,7 +326,9 @@ public class ExecutionManager implements Runnable
     
     void computeResults(List<BigDecimal> p_recombinationEnergies, List<BigDecimal> p_recombinationTimes)
     {
+        System.out.println("Sorting the results for further interpretation.");
         SimulationSorter sorter = new SimulationSorter(new ArrayList(p_recombinationTimes), new ArrayList(p_recombinationEnergies));
+        System.out.println("Trying to fit the luminescence.");
         QDFitter fit = new QDFitter(m_QDList, m_timeStep, m_captureTimes, m_escapeTimes, m_luminescence, sorter);
         
         m_loopCounter += 1;
@@ -350,6 +352,8 @@ public class ExecutionManager implements Runnable
         if (fit.isGoodFit() || m_loopCounter >= m_maxLoop)
         {
             m_resultHandler.stopMonitoring();
+            
+            System.out.println("Ending the simulation.");
 
             System.out.println("x (m)\ty (m)\tradius (m)\theight (m)\tenergy (J)");
             for (QuantumDot qd: m_QDList)
@@ -386,6 +390,8 @@ public class ExecutionManager implements Runnable
         }
         else
         {
+            System.out.println("Starting a new simulation");
+            
             m_QDList = fit.getFittedQDs();
             m_buffer.requestReinitialisation();
             launchCalculation();

@@ -74,6 +74,8 @@ public class ResultHandler implements Runnable
                     }
                 }
 
+                System.out.println("Simulation finished.");
+                
                 List<BigDecimal> recombinationTimes = new ArrayList(results.values());
                 List<BigDecimal> recombinationEnergies = new ArrayList<>();
 

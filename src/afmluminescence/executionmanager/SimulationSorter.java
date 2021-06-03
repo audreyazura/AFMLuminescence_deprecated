@@ -66,8 +66,7 @@ public class SimulationSorter
         BigDecimal maxEnergy = p_energiesList.get(p_energiesList.size() - 1);
         BigDecimal energyInterval = (maxEnergy.subtract(minEnergy)).divide(new BigDecimal("100"), MathContext.DECIMAL128);
         BigDecimal maxCounts = BigDecimal.ZERO;
-        int nInf = 0;
-        int nSup = 0;
+        
         for (BigDecimal currentEnergy = minEnergy ; currentEnergy.compareTo(maxEnergy) == -1 ; currentEnergy = currentEnergy.add(energyInterval))
         {
             BigDecimal currentMax = currentEnergy.add(energyInterval);
@@ -75,15 +74,6 @@ public class SimulationSorter
             
             while (p_energiesList.size() > 0 && p_energiesList.get(0).compareTo(currentMax) <= 0)
             {
-                if (p_energiesList.get(0).compareTo((new BigDecimal("1.0")).multiply(PhysicsTools.EV)) <= 0)
-                {
-                    nInf += 1;
-                }
-                else
-                {
-                    nSup += 1;
-                }
-                
                 nEnergy += 1;
                 p_energiesList.remove(0);
             }
@@ -139,12 +129,9 @@ public class SimulationSorter
             
             energyWriter.newLine();
             energyWriter.write(wavelengthNano.toPlainString() + "\t" + m_energies.get(energy));
-//            energyWriter.write(energy.divide(PhysicsTools.EV, MathContext.DECIMAL128).toPlainString() + "\t" + m_energies.get(energy));
         }
         energyWriter.flush();
         energyWriter.close();
-        
-        System.out.println("Simulation finished!");
     }
     
     public ContinuousFunction getLuminescence()

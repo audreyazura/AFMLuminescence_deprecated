@@ -37,6 +37,6 @@ public class SCSVLoader
     
     public ContinuousFunction getFunction()
     {
-        return m_function;
+        return new ContinuousFunction(m_function);
     }
 }

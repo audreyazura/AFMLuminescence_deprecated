@@ -23,38 +23,38 @@ package afmluminescence.executionmanager;
 public class MatchObject
 {
     private final boolean m_matching;
-        private final String m_comment;
+    private final String m_comment;
 
-        public MatchObject(boolean p_match, String p_comment)
+    public MatchObject(boolean p_match, String p_comment)
+    {
+        m_matching = p_match;
+        m_comment = p_comment;
+    }
+
+    @Override
+    public String toString()
+    {
+        String returnString;
+
+        if (m_matching)
         {
-            m_matching = p_match;
-            m_comment = p_comment;
+            returnString = "Matching";
         }
-        
-        @Override
-        public String toString()
+        else
         {
-            String returnString;
-            
-            if (m_matching)
-            {
-                returnString = "Matching";
-            }
-            else
-            {
-                returnString = "Not matching, " + m_comment;
-            }
-            
-            return returnString;
+            returnString = "Not matching, " + m_comment;
         }
-        
-        public boolean isMatching()
-        {
-            return m_matching;
-        }
-        
-        public String comment()
-        {
-            return m_comment;
-        }
+
+        return returnString;
+    }
+
+    public boolean isMatching()
+    {
+        return m_matching;
+    }
+
+    public String comment()
+    {
+        return m_comment;
+    }
 }

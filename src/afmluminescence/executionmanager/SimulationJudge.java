@@ -21,9 +21,6 @@ import com.github.audreyazura.commonutils.PhysicsTools;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.HashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.NoSuchElementException;
 import java.util.Set;
 
 /**

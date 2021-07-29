@@ -16,45 +16,19 @@
  */
 package afmluminescence.executionmanager;
 
+import javafx.scene.image.Image;
+
 /**
  *
  * @author audreyazura
  */
-public class MatchObject
+public interface GUIUpdater
 {
-    private final boolean m_matching;
-    private final String m_comment;
-
-    public MatchObject(boolean p_match, String p_comment)
-    {
-        m_matching = p_match;
-        m_comment = p_comment;
-    }
-
-    @Override
-    public String toString()
-    {
-        String returnString;
-
-        if (m_matching)
-        {
-            returnString = "Matching";
-        }
-        else
-        {
-            returnString = "Not matching, " + m_comment;
-        }
-
-        return returnString;
-    }
-
-    public boolean isMatching()
-    {
-        return m_matching;
-    }
-
-    public String comment()
-    {
-        return m_comment;
-    }
+    public void sendMessage (String p_message);
+    
+    public void setProgressTitle (String p_title);
+    
+    public void showPicture(Image p_picture, String p_title, String p_position);
+    
+    public void updateProgress (double p_progress, String p_time, String p_recombinedElectrons);
 }

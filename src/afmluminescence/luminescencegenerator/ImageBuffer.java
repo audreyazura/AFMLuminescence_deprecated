@@ -25,9 +25,5 @@ import java.util.List;
  */
 public interface ImageBuffer
 {
-    public void logElectrons(List<Electron> p_listToDraw);
-    
-    public void logQDs(List<QuantumDot> p_listToDraw);
-    
-    public void logTime(BigDecimal p_time);
+    public void logObjects(List<Electron> p_electronsToDraw, List<QuantumDot> p_qdsToDraw, BigDecimal p_time);
 }

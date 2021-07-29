@@ -37,16 +37,34 @@ public class Electron extends AbsorberObject
     private BigDecimal m_speedX;
     private BigDecimal m_speedY;
     
-    private ElectronState m_state = ElectronState.FREE;
-    private QuantumDot m_trapingDot = null;
+    private ElectronState m_state;
+    private QuantumDot m_trapingDot;
     
     public Electron (int p_id, BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_speedX, BigDecimal p_speedY)
     {
         m_id = p_id;
-        m_positionX = p_positionX;
-        m_positionY = p_positionY;
-        m_speedX = p_speedX;
-        m_speedY = p_speedY;
+        m_positionX = new BigDecimal(p_positionX.toString());
+        m_positionY = new BigDecimal(p_positionY.toString());
+        m_speedX = new BigDecimal(p_speedX.toString());
+        m_speedY = new BigDecimal(p_speedY.toString());
+        m_state = ElectronState.FREE;
+        m_trapingDot = null;
+    }
+    
+    public Electron (int p_id, BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_speedX, BigDecimal p_speedY, ElectronState p_state, QuantumDot p_trapingDot)
+    {
+        m_id = p_id;
+        m_positionX = new BigDecimal(p_positionX.toString());
+        m_positionY = new BigDecimal(p_positionY.toString());
+        m_speedX = new BigDecimal(p_speedX.toString());
+        m_speedY = new BigDecimal(p_speedY.toString());
+        m_state = p_state;
+        m_trapingDot = p_trapingDot;
+    }
+    
+    public Electron copy (int p_newId)
+    {
+        return new Electron(p_newId, new BigDecimal(m_positionX.toString()), new BigDecimal(m_positionY.toString()), new BigDecimal(m_speedX.toString()), new BigDecimal(m_speedY.toString()), m_state, m_trapingDot.copy());
     }
     
     public BigDecimal getRecombinationEnergy() throws AbsentInformationException
@@ -75,6 +93,7 @@ public class Electron extends AbsorberObject
     public boolean isRecombined()
     {
         return m_state == ElectronState.RECOMBINED;
+//        return true;
     }
     
     @Override
@@ -91,6 +110,7 @@ public class Electron extends AbsorberObject
         **/
         if (!(m_state == ElectronState.RECOMBINED))
         {
+            //if the electron is free, we see if it is captured
             if (m_state == ElectronState.FREE)
             {
                 BigDecimal deltaX = m_speedX.multiply(p_timeStep);
@@ -98,39 +118,66 @@ public class Electron extends AbsorberObject
                 
                 BigDecimal electronVision = BigDecimalMath.sqrt(deltaX.pow(2).add(deltaY.pow(2)));
                 
-                //finding QD in range in x
+                //finding QD in range in x and testing if they capture the electron
                 BigDecimal scanStart = (m_positionX.subtract(electronVision)).scaleByPowerOfTen(PhysicsTools.UnitsPrefix.NANO.getScale());
                 BigDecimal scanEnd = (m_positionX.add(electronVision)).scaleByPowerOfTen(PhysicsTools.UnitsPrefix.NANO.getScale());
-                Set<QuantumDot> atRangeDots = new HashSet<>();
-                for (BigDecimal iter = scanStart ; iter.compareTo(scanEnd) <= 0 ; iter = iter.add(BigDecimal.ONE))
+                Set<QuantumDot> testedDots = new HashSet<>();
+                for (BigDecimal iter = scanStart ; iter.compareTo(scanEnd) <= 0 && m_state == ElectronState.FREE ; iter = iter.add(BigDecimal.ONE))
                 {
-                    Set<QuantumDot> currentSet = p_map.get(iter.toBigInteger());
-                    if (currentSet != null)
+                    Set<QuantumDot> currentQDSet = p_map.get(iter.toBigInteger());
+                    if (currentQDSet != null)
                     {
-                        for (QuantumDot QD: currentSet)
+                        for (QuantumDot QD: currentQDSet)
                         {
-                            if (QD.canCapture())
+                            if (QD.canCapture() && !testedDots.contains(QD))
                             {
-                                atRangeDots.add(QD);
+                                BigDecimal distance = getDistance(QD.getX(), QD.getY()).subtract(QD.getRadius());
+                                if (distance.compareTo(electronVision) <= 0)
+                                {
+                                    if (QD.capture(p_RNG, distance, electronVision))
+                                    {
+                                        m_state = ElectronState.CAPTURED;
+                                        m_trapingDot = QD;
+                                        break;
+                                    }
+                                }
+                                testedDots.add(QD);
                             }
                         }
                     }
                 }
                 
-                for (QuantumDot QD: atRangeDots)
-                {
-                    BigDecimal distance = getDistance(QD.getX(), QD.getY()).subtract(QD.getRadius());
-                    if (distance.compareTo(electronVision) <= 0)
-                    {
-                        if (QD.capture(p_RNG, distance, electronVision))
-                        {
-                            m_state = ElectronState.CAPTURED;
-                            m_trapingDot = QD;
-                            break;
-                        }
-                    }
-                }
+//                Set<QuantumDot> dotToTest = new HashSet<>();
+//                for (BigDecimal iter = scanStart ; iter.compareTo(scanEnd) <= 0 ; iter = iter.add(BigDecimal.ONE))
+//                {
+//                    Set<QuantumDot> currentQDSet = p_map.get(iter.toBigInteger());
+//                    if (currentQDSet != null)
+//                    {
+//                        for (QuantumDot QD: currentQDSet)
+//                        {
+//                            if (QD.canCapture())
+//                            {
+//                                dotToTest.add(QD);
+//                            }
+//                        }
+//                    }
+//                }
+////                Set<QuantumDot> dotToTest = p_manager.dostAtRange(electronVision, scanStart, scanEnd);
+//                for (QuantumDot QD: dotToTest)
+//                {
+//                    BigDecimal distance = getDistance(QD.getX(), QD.getY()).subtract(QD.getRadius());
+//                    if (distance.compareTo(electronVision) <= 0)
+//                    {
+//                        if (QD.capture(p_RNG, distance, electronVision))
+//                        {
+//                            m_state = ElectronState.CAPTURED;
+//                            m_trapingDot = QD;
+//                            break;
+//                        }
+//                    }
+//                }
                 
+                //if the electron has not been captured (still free), we move it
                 if (m_state == ElectronState.FREE)
                 {
                     m_positionX = m_positionX.add(deltaX);
@@ -156,20 +203,20 @@ public class Electron extends AbsorberObject
             }
             else
             {
-                if (m_trapingDot.escape(p_RNG))
+                if (m_trapingDot.recombine(p_RNG))
                 {
-                    m_state = ElectronState.FREE;
-                    m_positionX = m_trapingDot.getX();
-                    m_positionY = m_trapingDot.getY();
-                    m_speedX = GeneratorManager.formatBigDecimal((new BigDecimal(p_RNG.nextGaussian())).multiply(p_vth));
-                    m_speedY = GeneratorManager.formatBigDecimal((new BigDecimal(p_RNG.nextGaussian())).multiply(p_vth));
-                    m_trapingDot = null;
+                    m_state = ElectronState.RECOMBINED;
                 }
                 else
                 {
-                    if (m_trapingDot.recombine(p_RNG))
+                    if (m_trapingDot.escape(p_RNG))
                     {
-                        m_state = ElectronState.RECOMBINED;
+                        m_state = ElectronState.FREE;
+                        m_positionX = m_trapingDot.getX();
+                        m_positionY = m_trapingDot.getY();
+                        m_speedX = GeneratorManager.formatBigDecimal((new BigDecimal(p_RNG.nextGaussian())).multiply(p_vth));
+                        m_speedY = GeneratorManager.formatBigDecimal((new BigDecimal(p_RNG.nextGaussian())).multiply(p_vth));
+                        m_trapingDot = null;
                     }
                 }
             }

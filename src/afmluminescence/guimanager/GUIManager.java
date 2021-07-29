@@ -17,88 +17,36 @@
 package afmluminescence.guimanager;
 
 import afmluminescence.executionmanager.ExecutionManager;
+import afmluminescence.executionmanager.GUIUpdater;
 import com.github.audreyazura.commonutils.PhysicsTools;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.MathContext;
 import javafx.application.Application;
 import javafx.scene.Group;
 import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.paint.Color;
 import javafx.stage.Stage;
-import java.util.ArrayList;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
+import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.text.Font;
 import javafx.stage.Screen;
-import javafx.util.Duration;
 
 /**
  *
  * @author Alban Lafuente
  */
-public class GUIManager extends Application
+public class GUIManager extends Application implements GUIUpdater
 {
-    private BigDecimal m_canvasXWidth;
-    private BigDecimal m_canvasYWidth;
     private BigDecimal m_sampleXSize;
     private BigDecimal m_sampleYSize;
     private double m_frameRate = 500; //represent the time between two key frames, in ms
-    private DrawingBuffer m_buffer;
-    private GraphicsContext m_canvasPainter;
-    private GraphicsContext m_QDPainter;
-    private GraphicsContext m_timePainter;
+    private ProgressWindowController m_progressWindow;
     
-    private void drawAnimated()
-    {
-        //reinitialising canvas
-        m_canvasPainter.clearRect(0, 0, m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
-        m_QDPainter.clearRect(0, 0, m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
-        
-        m_timePainter.clearRect(120, 0, 100, 30);
-        m_timePainter.setFill(Color.BLACK);
-        m_timePainter.fillRect(115, 0, 100, 30);
-        
-        if (m_buffer.hasToReinitialize())
-        {
-            m_frameRate = 5000;
-        }
-        else
-        {
-            m_frameRate = 500;
-            ArrayList<ObjectToDraw> electrons = m_buffer.downloadMoving();
-            String time = m_buffer.getTimePassed();
-            
-            if (electrons.size() > 0)
-            {
-                for(ObjectToDraw electronToDraw: electrons)
-                {
-                    m_canvasPainter.setFill(electronToDraw.getColor());
-                    double xDrawing = electronToDraw.getX().doubleValue();
-                    double yDrawing = electronToDraw.getY().doubleValue();
-                    double radius = electronToDraw.getRadius();
-                    m_canvasPainter.fillOval(xDrawing - radius, yDrawing - radius, radius * 2, radius * 2);
-                }
-                m_canvasPainter.setFill(Color.TRANSPARENT);
-            }
-
-            for (ObjectToDraw QDToDraw: m_buffer.downloadFixed())
-            {
-                m_QDPainter.setFill(QDToDraw.getColor());
-                double xDrawing = QDToDraw.getX().doubleValue();
-                double yDrawing = QDToDraw.getY().doubleValue();
-                double diameter = QDToDraw.getRadius() * 2;
-                m_QDPainter.fillOval(xDrawing, yDrawing, diameter, diameter);
-            }
-
-            m_timePainter.setFill(Color.WHITE);
-            m_timePainter.fillText(time + " ps", 120, 20);
-        }
-    }
-    
+    @Override
     public void showPicture(Image p_picture, String p_title, String p_position)
     {
         ImageView pictureViewer = new ImageView(p_picture);
@@ -119,7 +67,7 @@ public class GUIManager extends Application
         pictureStage.setX(pictureStage.getX() + shift);
     }
     
-    public void startVisualizer(String[] args)
+    public void startGUI(String[] args)
     {
         launch(args);
     }
@@ -129,57 +77,45 @@ public class GUIManager extends Application
     {
         stage.setResizable(false);
         
-        m_canvasXWidth = new BigDecimal("1000");
-        m_canvasYWidth = new BigDecimal("1000");
-        
         m_sampleXSize = (new BigDecimal(1)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
         m_sampleYSize = (new BigDecimal(1)).multiply(PhysicsTools.UnitsPrefix.MICRO.getMultiplier());
-        BigDecimal scaleX = m_canvasXWidth.divide(m_sampleXSize, MathContext.DECIMAL128);
-        BigDecimal scaleY = m_canvasYWidth.divide(m_sampleYSize, MathContext.DECIMAL128);
-        DrawingBuffer buffer = new DrawingBuffer(scaleX, scaleY);
-        m_buffer = buffer;
         
-        (new Thread(new ExecutionManager(this, buffer, getParameters().getRaw(), m_sampleXSize, m_sampleYSize, scaleX, scaleY))).start();
-        
-        Canvas animationCanvas = new Canvas(m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
-        m_canvasPainter = animationCanvas.getGraphicsContext2D();
-        
-        Canvas timeCanvas = new Canvas(250, 30);
-        m_timePainter = timeCanvas.getGraphicsContext2D();
-        m_timePainter.setFill(Color.BLACK);
-        m_timePainter.fillRect(0, 0, 120, 30);
-        m_timePainter.setFill(Color.WHITE);
-        m_timePainter.setFont(new Font("Source Sans Pro", 20));
-        m_timePainter.fillText("Time passed: ", 5, 20);
-        
-        Canvas QDCanvas = new Canvas(m_canvasXWidth.doubleValue(), m_canvasYWidth.doubleValue());
-        m_QDPainter = QDCanvas.getGraphicsContext2D();
-        ArrayList<ObjectToDraw> QDToDraw = new ArrayList<>();
-        while (QDToDraw.size() == 0)
+        FXMLLoader progressWindowLoader = new FXMLLoader(GUIManager.class.getResource("FXMLProgressWindow.fxml"));
+        try
         {
-           QDToDraw = m_buffer.downloadFixed();
+            stage.setScene(new Scene(progressWindowLoader.load()));
+            m_progressWindow = progressWindowLoader.getController();
+            stage.setTitle("AFMLuminescence - Simulation progress");
+            
+            m_progressWindow.initialize();
+            Properties configuration = new Properties();
+            configuration.load(new FileReader(new File(getParameters().getRaw().get(0))));
+            (new Thread(new ExecutionManager(this, configuration, m_sampleXSize, m_sampleYSize))).start();
+            
+            stage.show();
+            stage.sizeToScene();
         }
-        
-        for(ObjectToDraw QD: QDToDraw)
+        catch (IOException ex)
         {
-            m_QDPainter.setFill(QD.getColor());
-            m_QDPainter.fillOval(QD.getX().doubleValue(), QD.getY().doubleValue(), QD.getRadius() * 2, QD.getRadius() * 2);
+            Logger.getLogger(GUIManager.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
-        Group canvasRegion = new Group(QDCanvas, animationCanvas, timeCanvas);
-        Scene currentScene = new Scene(canvasRegion);
-        
-        stage.setScene(currentScene);
-        stage.setTitle("Electron circulating");
-        stage.show();
-        
-        Timeline animation = new Timeline(
-            new KeyFrame(
-                    Duration.seconds(0),
-                    event -> drawAnimated()),
-            new KeyFrame(Duration.millis(m_frameRate))
-        );
-        animation.setCycleCount(Timeline.INDEFINITE);
-        animation.play();
+    }
+    
+    @Override
+    public void sendMessage (String p_message)
+    {
+        m_progressWindow.printMessage(p_message);
+    }
+    
+    @Override
+    public void setProgressTitle (String p_title)
+    {
+        m_progressWindow.updateProgressLabel(p_title);
+    }
+    
+    @Override
+    public void updateProgress (double p_progress, String p_time, String p_recombinedElectrons)
+    {
+        m_progressWindow.updateProgress(p_progress, p_time, p_recombinedElectrons);
     }
 }

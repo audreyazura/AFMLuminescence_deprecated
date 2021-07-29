@@ -30,9 +30,9 @@ public class SCSVLoader
 {
     private final ContinuousFunction m_function;
     
-    public SCSVLoader (File p_input) throws DataFormatException, ArrayIndexOutOfBoundsException, IOException
+    public SCSVLoader (File p_input, PhysicsTools.UnitsPrefix p_abscissaScale, PhysicsTools.UnitsPrefix p_ordinateScale) throws DataFormatException, ArrayIndexOutOfBoundsException, IOException
     {
-        m_function = new ContinuousFunction(p_input, PhysicsTools.UnitsPrefix.NANO.getMultiplier(), PhysicsTools.UnitsPrefix.PICO.getMultiplier(), "scsv", ";", 2, new int[] {0,1});
+        m_function = new ContinuousFunction(p_input, p_abscissaScale.getMultiplier(), p_ordinateScale.getMultiplier(), "scsv", ";", 2, new int[] {0,1});
     }
     
     public ContinuousFunction getFunction()

@@ -16,15 +16,11 @@
  */
 package afmluminescence.executionmanager;
 
-import afmluminescence.guimanager.DrawingBuffer;
-import afmluminescence.guimanager.ObjectToDraw;
 import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.ImageBuffer;
 import afmluminescence.luminescencegenerator.QuantumDot;
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
-import javafx.scene.paint.Color;
 
 /**
  *
@@ -32,63 +28,35 @@ import javafx.scene.paint.Color;
  */
 public class ImageInterpretator implements ImageBuffer
 {
-    private final BigDecimal m_scaleX;
-    private final BigDecimal m_scaleY;
-    private final DrawingBuffer m_buffer;
+    private final GUIUpdater m_gui;
     
-    public ImageInterpretator (BigDecimal p_scaleX, BigDecimal p_scaleY, DrawingBuffer p_buffer)
+    public ImageInterpretator (GUIUpdater p_gui)
     {
-        m_scaleX = p_scaleX;
-        m_scaleY = p_scaleY;
-        m_buffer = p_buffer;
+        m_gui = p_gui;
     }
     
+    /**
+     * Format the data to send them to the GUI
+     * @param p_electronsToDraw the list of electrons
+     * @param p_qdsToDraw the list of QDs
+     * @param p_time the time passed in the simulation, in nanoseconds
+     */
     @Override
-    public void logElectrons(List<Electron> p_listToDraw)
+    public void logObjects(List<Electron> p_electronsToDraw, List<QuantumDot> p_qdsToDraw, BigDecimal p_time)
     {
-        ArrayList<ObjectToDraw> objectList = new ArrayList();
-            
-        for (Electron currentElectron: p_listToDraw)
+        int numberRecombinedElectron = 0;
+        
+        for (Electron electron: p_electronsToDraw)
         {
-            if (currentElectron.isFree())
+            if (electron.isRecombined())
             {
-                BigDecimal radius = new BigDecimal("2");
-                
-                objectList.add(new ObjectToDraw(currentElectron.getX().multiply(m_scaleX).subtract(radius), currentElectron.getY().multiply(m_scaleY).subtract(radius), Color.BLACK, radius.doubleValue()));
+                numberRecombinedElectron += 1;
             }
         }
         
-        m_buffer.logMoving(objectList);
-    }
-    
-    @Override
-    public void logQDs(List<QuantumDot> p_listToDraw)
-    {
-        ArrayList<ObjectToDraw> objectList = new ArrayList();
-            
-        for (QuantumDot currentQD: p_listToDraw)
-        {
-            BigDecimal radius = currentQD.getRadius().multiply(m_scaleX);
-
-            Color toPaint;
-            if (currentQD.hasRecombined())
-            {
-                toPaint = Color.RED;
-            }
-            else
-            {
-                toPaint = Color.GREEN;
-            }
-
-            objectList.add(new ObjectToDraw(currentQD.getX().multiply(m_scaleX).subtract(radius), currentQD.getY().multiply(m_scaleY).subtract(radius), toPaint, radius.doubleValue()));
-        }
+        String timeUnit = p_time.toPlainString() + " ns";
+        String recombinedRatio = numberRecombinedElectron + "/" + p_electronsToDraw.size();
         
-        m_buffer.logFixed(objectList);
-    }
-    
-    @Override
-    public void logTime(BigDecimal p_time)
-    {
-        m_buffer.logTime(p_time);
+        m_gui.updateProgress((double) numberRecombinedElectron / p_electronsToDraw.size(), timeUnit, recombinedRatio);
     }
 }

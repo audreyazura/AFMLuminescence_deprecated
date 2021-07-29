@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -72,15 +73,17 @@ public class GeneratorManager implements Runnable
         m_output = p_buffer;
         m_nElectrons = p_nElectron;
         m_vth = formatBigDecimal((PhysicsTools.KB.multiply(p_temperature).divide(PhysicsTools.ME, MathContext.DECIMAL128)).sqrt(MathContext.DECIMAL128));
-        m_timeStep = p_timeStep;
+        m_timeStep = new BigDecimal(p_timeStep.toString());
         
         m_sampleXSize = p_sampleX;
         m_sampleYSize = p_sampleY;
 
-        m_QDList = p_QDList;
-        for (QuantumDot QD: m_QDList)
+        m_QDList = new ArrayList<>();
+        for (QuantumDot QD: p_QDList)
         {
-            addToMap(QD);
+            QuantumDot toAddQQD = QD.copy();
+            m_QDList.add(toAddQQD);
+            addToMap(toAddQQD);
         }
     }
     
@@ -111,28 +114,46 @@ public class GeneratorManager implements Runnable
         }
     }
     
+    public static BigDecimal formatBigDecimal(BigDecimal p_toFormat)
+    {
+        return p_toFormat.stripTrailingZeros();
+    }
+    
+    public HashMap<Electron, BigDecimal> getFinalElectronList()
+    {
+//        System.out.println(m_finalElectronTime.size() + "\t" + m_nElectrons);
+        HashMap<Electron, BigDecimal> result = new HashMap<>();
+        if (m_finalElectronTime.size() == m_nElectrons)
+        {
+            int newID = m_nElectrons;
+            
+            for(Electron el: m_finalElectronTime.keySet())
+            {
+                result.put(el.copy(newID), new BigDecimal(m_finalElectronTime.get(el).toString()));
+                newID += 1;
+            }
+        }
+        
+        return result;
+    }
+    
     @Override
     public void run()
     {
-        BigDecimal x;
-        BigDecimal y;
-
         //generating electrons
-        BigDecimal v_x;
-        BigDecimal v_y;
         List<Electron> electronList = new ArrayList<>();
         for (int i = 0 ; i < m_nElectrons ; i += 1)
         {
-            x = formatBigDecimal((new BigDecimal(m_randomGenerator.nextDouble())).multiply(m_sampleXSize));
-            y = formatBigDecimal((new BigDecimal(m_randomGenerator.nextDouble())).multiply(m_sampleYSize));
+            BigDecimal x = formatBigDecimal((new BigDecimal(m_randomGenerator.nextDouble())).multiply(m_sampleXSize));
+            BigDecimal y = formatBigDecimal((new BigDecimal(m_randomGenerator.nextDouble())).multiply(m_sampleYSize));
             
-            v_x = formatBigDecimal((new BigDecimal(m_randomGenerator.nextGaussian())).multiply(m_vth));
-            v_y = formatBigDecimal((new BigDecimal(m_randomGenerator.nextGaussian())).multiply(m_vth));
+            BigDecimal v_x = formatBigDecimal((new BigDecimal(m_randomGenerator.nextGaussian())).multiply(m_vth));
+            BigDecimal v_y = formatBigDecimal((new BigDecimal(m_randomGenerator.nextGaussian())).multiply(m_vth));
             
             electronList.add(new Electron(i, x, y, v_x, v_y));
         }
-        m_output.logElectrons(electronList);
-        
+//        m_output.logObjects(electronList, m_QDList);
+//        
         //cutting calculation into chunks to distribute it between cores
         int numberOfChunks = Integer.min(Runtime.getRuntime().availableProcessors(), electronList.size());
         Iterator<Electron> electronIterator = electronList.iterator();
@@ -145,7 +166,7 @@ public class GeneratorManager implements Runnable
         int nElectronTreated = 0;
         while (electronIterator.hasNext())
         {
-            electronChunks[nElectronTreated%numberOfChunks].add(electronIterator.next());
+            electronChunks[nElectronTreated % numberOfChunks].add(electronIterator.next());
             nElectronTreated += 1;
         }
         
@@ -155,18 +176,16 @@ public class GeneratorManager implements Runnable
         {
             moverArray[i] = new ElectronMover(m_sampleXSize, m_sampleYSize, m_timeStep, m_vth, electronChunks[i], m_map);
         }
-        
-        //calculation start!
+//        
+//        //calculation start!
         BigDecimal timePassed = BigDecimal.ZERO;
-        m_output.logTime(timePassed);
-        List<Electron> currentELectronList;
-        boolean allFinished = false;
+        m_output.logObjects(electronList, m_QDList, timePassed);
+        List<Electron> recalculatedELectronList;
         try
         {
-            while(!allFinished)
+            while(m_finalElectronTime.size() != electronList.size())
             {
-                currentELectronList = new ArrayList<>();
-                allFinished = true;
+                recalculatedELectronList = new ArrayList<>();
                 
                 //advancing time logger (can be done before the calculation, the time logger is not taken into them)
                 timePassed = timePassed.add(m_timeStep);
@@ -184,10 +203,9 @@ public class GeneratorManager implements Runnable
                     
                     //adding the electrons to the list to be drawn
                     List<Electron> finishedList = moverArray[i].getElectronList();
-                    currentELectronList.addAll(finishedList);
+                    recalculatedELectronList.addAll(finishedList);
                     
                     //logging the recombined electrons
-                    boolean allRecombined = true;
                     for (Electron electron: finishedList)
                     {
                         if (electron.isRecombined())
@@ -197,20 +215,12 @@ public class GeneratorManager implements Runnable
                                 m_finalElectronTime.put(electron, timePassed);
                             }
                         }
-                        else
-                        {
-                            allRecombined = false;
-                        }
                     }
-                    
-                    //updating the stopping condition
-                    allFinished &= allRecombined;
                 }
                 
-                //sending the new data to the visualisation interface 
-                m_output.logElectrons(currentELectronList);
-                m_output.logTime(timePassed);
-                m_output.logQDs(m_QDList);
+                //sending the new data to the visualisation interface
+                BigDecimal timeNanosec = (timePassed.divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128)).setScale(3, RoundingMode.HALF_UP);
+                m_output.logObjects(recalculatedELectronList, m_QDList, timeNanosec);
                 
                 //cleaning the recombined QD
                 for (QuantumDot QD: m_QDList)
@@ -223,20 +233,5 @@ public class GeneratorManager implements Runnable
         {
             Logger.getLogger(GeneratorManager.class.getName()).log(Level.SEVERE, null, ex);
         }
-    }
-    
-    public HashMap<Electron, BigDecimal> getFinalElectronList()
-    {
-        if (m_finalElectronTime.keySet().size() != m_nElectrons)
-        {
-            throw new IllegalStateException("Calculation not yet finished.");
-        }
-        
-        return new HashMap(m_finalElectronTime);
-    }
-    
-    public static BigDecimal formatBigDecimal(BigDecimal p_toFormat)
-    {
-        return p_toFormat.stripTrailingZeros();
     }
 }

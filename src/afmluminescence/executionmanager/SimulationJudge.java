@@ -20,6 +20,11 @@ import com.github.audreyazura.commonutils.ContinuousFunction;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.util.HashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.NoSuchElementException;
+import java.util.Set;
 
 /**
  *
@@ -27,8 +32,8 @@ import java.math.MathContext;
  */
 public class SimulationJudge
 {
-    private final MatchObject m_maxMatching;
-    private final MatchObject m_shapeMatchingHighEnergy;
+    private final MatchObject<BigDecimal> m_maxMatching;
+    private final MatchObject<HashMap<BigDecimal, BigDecimal>> m_shapeMatchingHighEnergy;
     
     public SimulationJudge (ContinuousFunction p_experimentalLuminescence, ContinuousFunction p_simulatedLuminescence)
     {
@@ -37,61 +42,85 @@ public class SimulationJudge
         
         //comparing the position of maximum
         //supposing an acceptable error on the abscissa of +/-1 meV
-        BigDecimal maxError = (new BigDecimal("0.001")).multiply(PhysicsTools.EV);
+        BigDecimal maxErrorMaximum = (new BigDecimal("0.001")).multiply(PhysicsTools.EV);
         BigDecimal differenceMaxEnergy = experimentalMaxPosition.subtract(simulatedMaxPosition);
-        if(differenceMaxEnergy.abs().compareTo(maxError) <= 0)
+        if(differenceMaxEnergy.abs().compareTo(maxErrorMaximum) <= 0)
         {
-            m_maxMatching = new MatchObject(true, "");
+            m_maxMatching = new MatchObject<>(true, BigDecimal.ZERO);
         }
         else
         {
-            m_maxMatching = new MatchObject(false, (experimentalMaxPosition.divide(simulatedMaxPosition, MathContext.DECIMAL128)).toString());
+            m_maxMatching = new MatchObject<>(false, experimentalMaxPosition.divide(simulatedMaxPosition, MathContext.DECIMAL128));
         }
-        
-        //comparing the overall shape
-        BigDecimal simuLowEnergyRatio = BigDecimal.ZERO;
-        if(p_simulatedLuminescence.start().compareTo(simulatedMaxPosition) != 0)
-        {
-            simuLowEnergyRatio = p_simulatedLuminescence.integrate(p_simulatedLuminescence.start(), simulatedMaxPosition).divide(p_simulatedLuminescence.integrate(), MathContext.DECIMAL128);
-        }
-        
-        BigDecimal experimentLowEnergyRatio = BigDecimal.ZERO;
-        if(p_experimentalLuminescence.start().compareTo(experimentalMaxPosition) != 0)
-        {
-            experimentLowEnergyRatio = p_experimentalLuminescence.integrate(p_experimentalLuminescence.start(), experimentalMaxPosition).divide(p_experimentalLuminescence.integrate(), MathContext.DECIMAL128);
-        }
-        
-        BigDecimal simuHighEnergyRatio = BigDecimal.ZERO;
-        if(p_simulatedLuminescence.end().compareTo(simulatedMaxPosition) != 0)
-        {
-            simuHighEnergyRatio = p_simulatedLuminescence.integrate(simulatedMaxPosition, p_simulatedLuminescence.end()).divide(p_simulatedLuminescence.integrate(), MathContext.DECIMAL128);
-        }
-        
-        BigDecimal experimentHighEnergyRatio = BigDecimal.ZERO;
-        if(p_experimentalLuminescence.end().compareTo(experimentalMaxPosition) != 0)
-        {
-            experimentHighEnergyRatio = p_experimentalLuminescence.integrate(experimentalMaxPosition, p_experimentalLuminescence.end()).divide(p_experimentalLuminescence.integrate(), MathContext.DECIMAL128);
-        }
-        
-//        System.out.println("Low -> simu: " + simuLowEnergyRatio + "\t experiment: " + experimentLowEnergyRatio);
-//        System.out.println("High -> simu: " + simuHighEnergyRatio + "\t experiment: " + experimentHighEnergyRatio);
         
         //putting an acceptable error on the shape of 5%
         BigDecimal maxErrorShape = new BigDecimal("0.05");
-        BigDecimal differenceShapeHighEnergy = simuHighEnergyRatio.subtract(experimentHighEnergyRatio);
-        BigDecimal differenceShapeLowEnergy = simuLowEnergyRatio.subtract(experimentLowEnergyRatio);
+        BigDecimal experimentalLuminescenceIntegral = p_experimentalLuminescence.integrate();
+        BigDecimal calculatedLuminescenceIntegral = p_simulatedLuminescence.integrate();
+        BigDecimal intervalSize = p_experimentalLuminescence.getMeanIntervalSize();
+        Set<BigDecimal> experimentalLuminescenceAbscissa = p_experimentalLuminescence.getAbscissa();
+        
+        boolean shapeMatch = true;
+        HashMap<BigDecimal, BigDecimal> shapeDifferences = new HashMap<>();
+        
+        for (BigDecimal position: experimentalLuminescenceAbscissa)
+        {
+            if (position != p_experimentalLuminescence.end())
+            {
+                BigDecimal distanceFromMaximum = position.subtract(experimentalMaxPosition);
+            
+                BigDecimal startPositionCalculation = simulatedMaxPosition.add(distanceFromMaximum);
+                BigDecimal endPositionCalculation = startPositionCalculation.add(intervalSize);
+                BigDecimal calculatedSliceIntegral;
+                if (p_simulatedLuminescence.isInRange(startPositionCalculation))
+                {
+                    if (p_simulatedLuminescence.isInRange(endPositionCalculation))
+                    {
+                        calculatedSliceIntegral = p_simulatedLuminescence.integrate(startPositionCalculation, endPositionCalculation);
+                    }
+                    else
+                    {
+                        calculatedSliceIntegral = p_simulatedLuminescence.integrate(startPositionCalculation, p_simulatedLuminescence.end());
+                    }
+                }
+                else
+                {
+                    if (p_simulatedLuminescence.isInRange(endPositionCalculation))
+                    {
+                        calculatedSliceIntegral = p_simulatedLuminescence.integrate(p_simulatedLuminescence.start(), endPositionCalculation);
+                    }
+                    else
+                    {
+                       calculatedSliceIntegral = BigDecimal.ZERO;
+                    }
+                }
+
+                BigDecimal experimentalIntegralRatio = p_experimentalLuminescence.integrate(position, position.add(intervalSize)).divide(experimentalLuminescenceIntegral, MathContext.DECIMAL128);
+                BigDecimal calculatedIntegralRatio = calculatedSliceIntegral.divide(calculatedLuminescenceIntegral, MathContext.DECIMAL128);
+                BigDecimal integralRatioDifference = experimentalIntegralRatio.subtract(calculatedIntegralRatio);
+
+                if (integralRatioDifference.abs().compareTo(BigDecimal.ONE) >= 0)
+                {
+                    throw new ArithmeticException("Probability difference bigger than 1");
+                }
+
+                shapeMatch &= integralRatioDifference.abs().compareTo(maxErrorShape) <= 0;
+                shapeDifferences.put(distanceFromMaximum, integralRatioDifference);
+            }
+        }
         
         //the error should compensate each other. If they don't, an error occured. We give ourselves a leeway of 1e-20.
-        if((differenceShapeHighEnergy.add(differenceShapeLowEnergy)).compareTo(new BigDecimal("1e-20")) <= 0)
-        {
-            //the absolute error is basically the same on each side, therefore we can only care on one side
-            m_shapeMatchingHighEnergy = new MatchObject(((differenceShapeHighEnergy.abs()).compareTo(maxErrorShape) <= 0), differenceShapeHighEnergy.toString());
-        }
-        else
-        {
-            System.out.println(simuHighEnergyRatio.add(simuLowEnergyRatio));
-            throw new ArithmeticException("Sum of ratioed integral different than 1.");
-        }
+//        if((differenceShapeHighEnergy.add(differenceShapeLowEnergy)).compareTo(new BigDecimal("1e-20")) <= 0)
+//        {
+//            //the absolute error is basically the same on each side, therefore we can only care on one side
+//            m_shapeMatchingHighEnergy = new MatchObject<>(((differenceShapeHighEnergy.abs()).compareTo(maxErrorShape) <= 0), differenceShapeHighEnergy);
+//        }
+//        else
+//        {
+//            throw new ArithmeticException("Sum of ratioed integral different than 1.");
+//        }
+        
+        m_shapeMatchingHighEnergy = new MatchObject<>(shapeMatch, shapeDifferences);
     }
     
     public boolean maximumMatch()
@@ -112,7 +141,7 @@ public class SimulationJudge
         {
             try
             {
-                difference = new BigDecimal(m_maxMatching.comment());
+                difference = new BigDecimal(m_maxMatching.comment().toString());
             }
             catch (NumberFormatException exception)
             {
@@ -123,15 +152,20 @@ public class SimulationJudge
         return difference;
     }
     
-    public BigDecimal shapeDifferenceRatio() throws NumberFormatException
+    public HashMap<BigDecimal, BigDecimal> shapeDifferenceMap() throws NumberFormatException
     {
-        BigDecimal difference = BigDecimal.ZERO;
+        HashMap<BigDecimal, BigDecimal> differences = new HashMap<>();
         
         if (!m_shapeMatchingHighEnergy.isMatching())
         {
             try
             {
-                difference = new BigDecimal(m_shapeMatchingHighEnergy.comment());
+                HashMap<BigDecimal, BigDecimal> judgedDiff = m_shapeMatchingHighEnergy.comment();
+                for (BigDecimal key: judgedDiff.keySet())
+                {
+                    differences.put(new BigDecimal(key.toString()), new BigDecimal(judgedDiff.get(key).toString()));
+                }
+                
             }
             catch (NumberFormatException exception)
             {
@@ -139,6 +173,45 @@ public class SimulationJudge
             }
         }
         
-        return difference;
+        return differences;
+    }
+    
+    private class MatchObject<E>
+    {
+        private final boolean m_matching;
+        private final E m_comment;
+
+        public MatchObject(boolean p_match, E p_comment)
+        {
+            m_matching = p_match;
+            m_comment = p_comment;
+        }
+
+        @Override
+        public String toString()
+        {
+            String returnString;
+
+            if (m_matching)
+            {
+                returnString = "Matching";
+            }
+            else
+            {
+                returnString = "Not matching, " + m_comment.toString();
+            }
+
+            return returnString;
+        }
+
+        public boolean isMatching()
+        {
+            return m_matching;
+        }
+
+        public E comment()
+        {
+            return m_comment;
+        }
     }
 }

@@ -16,6 +16,24 @@
  */
 package afmluminescence.guimanager;
 
+import afmluminescence.luminescencegenerator.Metamaterial;
+import afmluminescence.luminescencegenerator.Material;
+import afmluminescence.executionmanager.ExecutionManager;
+import afmluminescence.guimanager.GUIManager;
+import com.github.audreyazura.commonutils.PhysicsTools;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javafx.scene.image.ImageView;
 import net.opentsdb.tools.ArgP;
 
 /**
@@ -56,15 +74,14 @@ public class Launcher
         {
             String[] arguments = new String[2];
             
-            arguments[0] = argParser.get("--lum", "");
-            arguments[1] = argParser.get("--QDs", "");
+//            arguments[0] = argParser.get("--lum", "");
+//            arguments[1] = argParser.get("--QDs", "");
             
-            arguments[0] = "/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/PL/Luminescence.scsv";
-            arguments[1] = "/home/audreyazura/Documents/Work/Simulation/AFMLuminescence/QDList.csv";
 //            arguments[1] = "/home/alafuente/ドキュメント/OkadaCollab/iii201028a_clean.csv";
-            
+
+            arguments[0] = Launcher.class.getClassLoader().getResource("ressources/configuration/default.conf").getFile();
             GUIManager absorberRepresentation = new GUIManager();
-            absorberRepresentation.startVisualizer(arguments);
+            absorberRepresentation.startGUI(arguments);
         }
     }
     

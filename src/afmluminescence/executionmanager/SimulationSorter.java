@@ -39,14 +39,14 @@ public class SimulationSorter
     private final HashMap<BigDecimal, BigDecimal> m_times = new HashMap<>();
     private final HashMap<BigDecimal, BigDecimal> m_energies = new HashMap<>();
     
-    public SimulationSorter (List<BigDecimal> p_timesList, List<BigDecimal> p_energiesList)
+    public SimulationSorter (BigDecimal p_energyIntervalSize, List<BigDecimal> p_timesList, List<BigDecimal> p_energiesList)
     {
         p_timesList.sort(null);
         p_energiesList.sort(null);
         
         //cutting the timespan of the experiment into a given number of intervals (here 100) and puting the number of recombined electrons during each intervals
         BigDecimal maxTime = p_timesList.get(p_timesList.size() - 1);
-        BigDecimal timeInterval = maxTime.divide(new BigDecimal("100"), MathContext.DECIMAL128);
+        BigDecimal timeInterval = maxTime.divide(new BigDecimal("4000"), MathContext.DECIMAL128);
         for (BigDecimal currentTime = BigDecimal.ZERO ; currentTime.compareTo(maxTime) == -1 ; currentTime = currentTime.add(timeInterval))
         {
             BigDecimal currentMax = currentTime.add(timeInterval);
@@ -61,15 +61,14 @@ public class SimulationSorter
             m_times.put(currentTime, new BigDecimal(nRecomb));
         }
         
-        //doing the same for the energies, in 50 intervals
+        //the interval for the energy is given in the constructor
         BigDecimal minEnergy = p_energiesList.get(0);
         BigDecimal maxEnergy = p_energiesList.get(p_energiesList.size() - 1);
-        BigDecimal energyInterval = (maxEnergy.subtract(minEnergy)).divide(new BigDecimal("100"), MathContext.DECIMAL128);
         BigDecimal maxCounts = BigDecimal.ZERO;
         
-        for (BigDecimal currentEnergy = minEnergy ; currentEnergy.compareTo(maxEnergy) == -1 ; currentEnergy = currentEnergy.add(energyInterval))
+        for (BigDecimal currentEnergy = minEnergy ; currentEnergy.compareTo(maxEnergy) == -1 ; currentEnergy = currentEnergy.add(p_energyIntervalSize))
         {
-            BigDecimal currentMax = currentEnergy.add(energyInterval);
+            BigDecimal currentMax = currentEnergy.add(p_energyIntervalSize);
             int nEnergy = 0;
             
             while (p_energiesList.size() > 0 && p_energiesList.get(0).compareTo(currentMax) <= 0)
@@ -94,6 +93,17 @@ public class SimulationSorter
         }
         
         m_energyFunction = new ContinuousFunction(m_energies);
+    }
+    
+    static public SimulationSorter sorterWithNoIntervalGiven(List<BigDecimal> p_timesList, List<BigDecimal> p_energiesList)
+    {
+        //guessing a good energy interval size: separating the energy span into 
+        p_energiesList.sort(null);
+        BigDecimal minEnergy = p_energiesList.get(0);
+        BigDecimal maxEnergy = p_energiesList.get(p_energiesList.size() - 1);
+        BigDecimal energyInterval = (maxEnergy.subtract(minEnergy)).divide(new BigDecimal("150"), MathContext.DECIMAL128);
+        
+        return new SimulationSorter(energyInterval, p_timesList, p_energiesList);
     }
     
     public void saveToFile(File timeFile, File energyFile) throws IOException

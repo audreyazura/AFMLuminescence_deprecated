@@ -16,8 +16,6 @@
  */
 package afmluminescence.executionmanager;
 
-import afmluminescence.guimanager.GUIManager;
-import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.GeneratorManager;
 import static afmluminescence.luminescencegenerator.GeneratorManager.formatBigDecimal;
 import afmluminescence.luminescencegenerator.Material;
@@ -26,7 +24,6 @@ import afmluminescence.luminescencegenerator.QuantumDot;
 import com.github.audreyazura.commonutils.ContinuousFunction;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
-import com.sun.jdi.AbsentInformationException;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;

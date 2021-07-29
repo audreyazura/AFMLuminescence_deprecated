@@ -16,24 +16,7 @@
  */
 package afmluminescence.guimanager;
 
-import afmluminescence.luminescencegenerator.Metamaterial;
-import afmluminescence.luminescencegenerator.Material;
-import afmluminescence.executionmanager.ExecutionManager;
 import afmluminescence.guimanager.GUIManager;
-import com.github.audreyazura.commonutils.PhysicsTools;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.MathContext;
-import java.net.URL;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javafx.scene.image.ImageView;
 import net.opentsdb.tools.ArgP;
 
 /**

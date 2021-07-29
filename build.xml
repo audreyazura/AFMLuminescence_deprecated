@@ -70,4 +70,67 @@
     nbproject/build-impl.xml file. 
 
     -->
+    
+    <target name="-post-jar">
+
+            <property name="store.jar.name" value="${application.title}-portable"/>
+            <property name="store.dir" value="dist-portable"/>
+            <property name="store.jar" value="${store.dir}/${store.jar.name}.jar"/>
+            
+            <condition property="start.file" value="AFMLuminescence-start.sh">
+                <os family="unix"/>
+            </condition>
+            
+            <condition property="os.dir" value="unix">
+                <os family="unix"/>
+            </condition>
+            
+            <condition property="start.file" value="AFMLuminescence-start.bat">
+                <os family="windows"/>
+            </condition>
+            
+            <condition property="os.dir" value="windows">
+                <os family="windows"/>
+            </condition>
+
+            <echo message="Packaging ${application.title}${application.desc} into a single JAR at ${store.jar}"/>
+
+            <delete dir="${store.dir}"/>
+            <mkdir dir="${store.dir}"/>
+            <mkdir dir="${store.dir}/${os.dir}"/>
+
+
+            <jar destfile="${store.dir}/temp_final.jar" filesetmanifest="skip">
+                <zipgroupfileset dir="dist" includes="*.jar"/>
+                <zipgroupfileset dir="../BigDecimalMath/dist" includes="BigDecimalMath.jar"/>
+                <zipgroupfileset dir="../CommonUtils/dist" includes="CommonUtils.jar"/>
+                <zipgroupfileset dir="../OpenTSDBTools/dist" includes="OpenTSDBTools.jar"/>
+                <zipgroupfileset dir="../PCG/dist" includes="PCG.jar"/>
+                <zipgroupfileset dir="../../../Tools/JavaFX/openjfx-11.0.2_linux-x64_bin-sdk/javafx-sdk-11.0.2/lib" includes="*.jar"/>
+                <fileset dir="../../../Tools/JavaFX/openjfx-11.0.2_linux-x64_bin-sdk/javafx-sdk-11.0.2/lib" includes="*.so"/>
+
+                <manifest>
+                    <attribute name="Main-Class" value="${main.class}"/>
+                </manifest>
+            </jar>
+
+            <zip destfile="${store.jar}">
+                <zipfileset src="${store.dir}/temp_final.jar"
+                excludes="META-INF/*.SF, META-INF/*.DSA, META-INF/*.RSA"/>
+            </zip>
+
+            <delete file="${store.dir}/temp_final.jar"/>
+            
+            <zip destfile="${store.dir}/${os.dir}/${application.title}.zip">
+                <fileset dir="StartingScripts" includes="${start.file}" />
+                <fileset dir="${store.dir}" includes="*.jar" />
+                <fileset dir="." includes="ressources/configuration/" />
+                <fileset dir="." includes="ressources/jre11-${os.dir}/" />
+                <fileset dir="." includes="ressources/*materials/" />
+                <fileset dir="." includes="ressources/*times/" />
+            </zip>
+            
+            <delete file="${store.jar}"/>
+
+	</target>
 </project>

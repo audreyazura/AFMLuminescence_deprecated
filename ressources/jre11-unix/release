@@ -1,0 +1,2 @@
+JAVA_VERSION="11.0.6"
+MODULES="java.base java.scripting java.xml jdk.internal.jvmstat jdk.attach jdk.jdwp.agent jdk.jdi jdk.unsupported"

@@ -116,10 +116,10 @@ public class QuantumDot extends AbsorberObject
      * At the moment, it is approximated as the overlapping between the QD and the circle containing the positions the electron can reach
      * See here for the calculation of the overlap: https://www.xarg.org/2016/07/calculate-the-intersection-area-of-two-circles/
      * It had to be slightly adapted with four different cases:
-     *  - when the electron is entirely inside the QD (electronDistance + electronSpan < radius)
-     *  - when the QD is entirely "inside" the electron (electronDistance + radius < electronSpan)
-     *  - when the center of the QD is farther away from the electron position than the intersection between the QD limit and the electron span limit (electronDistance > sqrt(abs(radius^2 - electronSpan^2)))
-     *  - when the center of the QD is closer from the electron position than the intersection between the QD limit and the electron span limit (electronDistance < sqrt(abs(radius^2 - electronSpan^2)))
+     *  - when the electron is entirely inside the QD (electronDistance + electronSpan &lt; radius)
+     *  - when the QD is entirely "inside" the electron (electronDistance + radius &lt; electronSpan)
+     *  - when the center of the QD is farther away from the electron position than the intersection between the QD limit and the electron span limit (electronDistance &gt; sqrt(abs(radius^2 - electronSpan^2)))
+     *  - when the center of the QD is closer from the electron position than the intersection between the QD limit and the electron span limit (electronDistance &lt; sqrt(abs(radius^2 - electronSpan^2)))
      * @param p_RNG the random number generator
      * @param electronDistance the distance between the center of the QD and electron position
      * @param electronSpan the circle containing the position the electron can reach

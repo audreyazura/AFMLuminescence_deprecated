@@ -86,23 +86,23 @@
                 <os family="windows"/>
             </condition>
             
-<!--            <property name="start.file" value="AFMLuminescence-start.sh"/>
+            <property name="start.file" value="AFMLuminescence-start.sh"/>
             <property name="os.dir" value="unix"/>
             <property name="bigmath.dir" value="../BigDecimalMath/dist"/>
             <property name="opentsdbt.dir" value="../OpenTSDBTools/dist"/>
             <property name="pcg.dir" value="../PCG/dist"/>
             <property name="javafx.jar.dir" value="../../../Tools/JavaFX/openjfx-11.0.2_linux-x64_bin-sdk/javafx-sdk-11.0.2/lib"/>
             <property name="javafx.bin.dir" value="../../../Tools/JavaFX/openjfx-11.0.2_linux-x64_bin-sdk/javafx-sdk-11.0.2/lib"/>
-            <property name="javafx.bin.ext" value=".so"/>-->
+            <property name="javafx.bin.ext" value=".so"/>
             
-            <property name="start.file" value="AFMLuminescence-start.bat"/>
+<!--            <property name="start.file" value="AFMLuminescence-start.bat"/>
             <property name="os.dir" value="windows"/>
             <property name="bigmath.dir" value="../../../Tools/Libraries"/>
             <property name="opentsdbt.dir" value="../../../Tools/Libraries"/>
             <property name="pcg.dir" value="../../../Tools/Libraries"/>
             <property name="javafx.jar.dir" value="../../../Tools/javafx-sdk-11.0.2/lib"/>
             <property name="javafx.bin.dir" value="../../../Tools/javafx-sdk-11.0.2/bin"/>
-            <property name="javafx.bin.ext" value=".dll"/>
+            <property name="javafx.bin.ext" value=".dll"/>-->
 
             <echo message="Packaging ${application.title}${application.desc} into a single JAR at ${store.jar}"/>
 

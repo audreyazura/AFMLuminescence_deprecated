@@ -247,7 +247,7 @@ public class ExecutionManager implements Runnable
         }
         
         //creating the material and metamaterial database
-        String materialDirectoryPath = getClass().getClassLoader().getResource("ressources/materials/").getFile();
+        String materialDirectoryPath = "ressources/materials/";
         Map<String, Material> materialList = new HashMap<>();
         File materialDirectory = new File(materialDirectoryPath);
         for (String fileName: materialDirectory.list())
@@ -270,7 +270,7 @@ public class ExecutionManager implements Runnable
             }
         }
 
-        String metamaterialDirectoryPath = getClass().getClassLoader().getResource("ressources/metamaterials/").getFile();
+        String metamaterialDirectoryPath = "ressources/metamaterials/";
         Map<String, Metamaterial> metamaterialList = new HashMap<>();
         File metamaterialDirectory = new File(metamaterialDirectoryPath);
         for (String fileName: metamaterialDirectory.list())

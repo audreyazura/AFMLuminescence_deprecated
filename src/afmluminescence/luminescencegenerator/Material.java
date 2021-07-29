@@ -139,7 +139,7 @@ public class Material
             {
                 PhysicsTools.UnitsPrefix abscissaUnit = PhysicsTools.UnitsPrefix.selectPrefix(functionKeySplit[2]);
                 PhysicsTools.UnitsPrefix ordinateUnit = PhysicsTools.UnitsPrefix.selectPrefix(functionKeySplit[3]);
-                tempFunction = (new SCSVLoader(new File(getClass().getClassLoader().getResource("ressources/" + functionType + "/").getFile() + functionValue), abscissaUnit, ordinateUnit)).getFunction();
+                tempFunction = (new SCSVLoader(new File("ressources/" + functionType + "/" + functionValue), abscissaUnit, ordinateUnit)).getFunction();
             }
             else
             {

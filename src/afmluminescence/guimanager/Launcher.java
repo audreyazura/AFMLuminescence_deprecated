@@ -79,7 +79,7 @@ public class Launcher
             
 //            arguments[1] = "/home/alafuente/ドキュメント/OkadaCollab/iii201028a_clean.csv";
 
-            arguments[0] = Launcher.class.getClassLoader().getResource("ressources/configuration/default.conf").getFile();
+            arguments[0] = "ressources/configuration/default.conf";
             GUIManager absorberRepresentation = new GUIManager();
             absorberRepresentation.startGUI(arguments);
         }

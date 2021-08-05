@@ -72,74 +72,72 @@
     -->
     
     <target name="-post-jar">
+        <property name="store.jar.name" value="${application.title}-portable"/>
+        <property name="store.dir" value="dist-portable"/>
+        <property name="store.jar" value="${store.dir}/${store.jar.name}.jar"/>
+        <property name="unix.init" value=""/>
+        <property name="windows.init" value=""/>
 
-            <property name="store.jar.name" value="${application.title}-portable"/>
-            <property name="store.dir" value="dist-portable"/>
-            <property name="store.jar" value="${store.dir}/${store.jar.name}.jar"/>
-            <property name="unix.init" value=""/>
-            <property name="windows.init" value=""/>
-            
-            <condition property="os.unix">
-                <os family="unix"/>
-            </condition>
-            <condition property="os.windows">
-                <os family="windows"/>
-            </condition>
-            
-            <property name="start.file" value="AFMLuminescence-start.sh"/>
-            <property name="os.dir" value="unix"/>
-            <property name="bigmath.dir" value="../BigDecimalMath/dist"/>
-            <property name="opentsdbt.dir" value="../OpenTSDBTools/dist"/>
-            <property name="pcg.dir" value="../PCG/dist"/>
-            <property name="javafx.jar.dir" value="../../../Tools/JavaFX/openjfx-11.0.2_linux-x64_bin-sdk/javafx-sdk-11.0.2/lib"/>
-            <property name="javafx.bin.dir" value="../../../Tools/JavaFX/openjfx-11.0.2_linux-x64_bin-sdk/javafx-sdk-11.0.2/lib"/>
-            <property name="javafx.bin.ext" value=".so"/>
-            
+        <condition property="os.unix">
+            <os family="unix"/>
+        </condition>
+        <condition property="os.windows">
+            <os family="windows"/>
+        </condition>
+
+        <property name="start.file" value="AFMLuminescence-start.sh"/>
+        <property name="os.dir" value="unix"/>
+        <property name="bigmath.dir" value="../BigDecimalMath/dist"/>
+        <property name="opentsdbt.dir" value="../OpenTSDBTools/dist"/>
+        <property name="pcg.dir" value="../PCG/dist"/>
+        <property name="javafx.jar.dir" value="../../../Tools/JavaFX/openjfx-11.0.2_linux-x64_bin-sdk/javafx-sdk-11.0.2/lib"/>
+        <property name="javafx.bin.dir" value="../../../Tools/JavaFX/openjfx-11.0.2_linux-x64_bin-sdk/javafx-sdk-11.0.2/lib"/>
+        <property name="javafx.bin.ext" value=".so"/>
+
 <!--            <property name="start.file" value="AFMLuminescence-start.bat"/>
-            <property name="os.dir" value="windows"/>
-            <property name="bigmath.dir" value="../../../Tools/Libraries"/>
-            <property name="opentsdbt.dir" value="../../../Tools/Libraries"/>
-            <property name="pcg.dir" value="../../../Tools/Libraries"/>
-            <property name="javafx.jar.dir" value="../../../Tools/javafx-sdk-11.0.2/lib"/>
-            <property name="javafx.bin.dir" value="../../../Tools/javafx-sdk-11.0.2/bin"/>
-            <property name="javafx.bin.ext" value=".dll"/>-->
+        <property name="os.dir" value="windows"/>
+        <property name="bigmath.dir" value="../../../Tools/Libraries"/>
+        <property name="opentsdbt.dir" value="../../../Tools/Libraries"/>
+        <property name="pcg.dir" value="../../../Tools/Libraries"/>
+        <property name="javafx.jar.dir" value="../../../Tools/javafx-sdk-11.0.2/lib"/>
+        <property name="javafx.bin.dir" value="../../../Tools/javafx-sdk-11.0.2/bin"/>
+        <property name="javafx.bin.ext" value=".dll"/>-->
 
-            <echo message="Packaging ${application.title}${application.desc} into a single JAR at ${store.jar}"/>
+        <echo message="Packaging ${application.title}${application.desc} into a single JAR at ${store.jar}"/>
 
-            <delete dir="${store.dir}/${os.dir}"/>
-            <mkdir dir="${store.dir}/${os.dir}"/>
+        <delete dir="${store.dir}/${os.dir}"/>
+        <mkdir dir="${store.dir}/${os.dir}"/>
 
-            <jar destfile="${store.dir}/temp_final.jar" filesetmanifest="skip">
-                <zipgroupfileset dir="dist" includes="*.jar"/>
-                <zipgroupfileset dir="${bigmath.dir}" includes="BigDecimalMath.jar"/>
-                <zipgroupfileset dir="../CommonUtils/dist" includes="CommonUtils.jar"/>
-                <zipgroupfileset dir="${opentsdbt.dir}" includes="OpenTSDBTools.jar"/>
-                <zipgroupfileset dir="${pcg.dir}" includes="PCG.jar"/>
-                <zipgroupfileset dir="${javafx.jar.dir}" includes="*.jar"/>
-                <fileset dir="${javafx.bin.dir}" includes="*${javafx.bin.ext}"/>
+        <jar destfile="${store.dir}/temp_final.jar" filesetmanifest="skip">
+            <zipgroupfileset dir="dist" includes="*.jar"/>
+            <zipgroupfileset dir="${bigmath.dir}" includes="BigDecimalMath.jar"/>
+            <zipgroupfileset dir="../CommonUtils/dist" includes="CommonUtils.jar"/>
+            <zipgroupfileset dir="${opentsdbt.dir}" includes="OpenTSDBTools.jar"/>
+            <zipgroupfileset dir="${pcg.dir}" includes="PCG.jar"/>
+            <zipgroupfileset dir="${javafx.jar.dir}" includes="*.jar"/>
+            <fileset dir="${javafx.bin.dir}" includes="*${javafx.bin.ext}"/>
 
-                <manifest>
-                    <attribute name="Main-Class" value="${main.class}"/>
-                </manifest>
-            </jar>
+            <manifest>
+                <attribute name="Main-Class" value="${main.class}"/>
+            </manifest>
+        </jar>
 
-            <zip destfile="${store.jar}">
-                <zipfileset src="${store.dir}/temp_final.jar"
-                excludes="META-INF/*.SF, META-INF/*.DSA, META-INF/*.RSA"/>
-            </zip>
+        <zip destfile="${store.jar}">
+            <zipfileset src="${store.dir}/temp_final.jar"
+            excludes="META-INF/*.SF, META-INF/*.DSA, META-INF/*.RSA"/>
+        </zip>
 
-            <delete file="${store.dir}/temp_final.jar"/>
-            
-            <zip destfile="${store.dir}/${os.dir}/${application.title}.zip">
-                <fileset dir="StartingScripts" includes="${start.file}" />
-                <fileset dir="${store.dir}" includes="*.jar" />
-                <fileset dir="." includes="ressources/configuration/" />
-                <fileset dir="." includes="ressources/jre11-${os.dir}/" />
-                <fileset dir="." includes="ressources/*materials/" />
-                <fileset dir="." includes="ressources/*times/" />
-            </zip>
-            
-            <delete file="${store.jar}"/>
+        <delete file="${store.dir}/temp_final.jar"/>
 
-	</target>
+        <zip destfile="${store.dir}/${os.dir}/${application.title}.zip">
+            <fileset dir="StartingScripts" includes="${start.file}" />
+            <fileset dir="${store.dir}" includes="*.jar" />
+            <fileset dir="." includes="ressources/configuration/" />
+            <fileset dir="." includes="ressources/jre11-${os.dir}/" />
+            <fileset dir="." includes="ressources/*materials/" />
+            <fileset dir="." includes="ressources/*times/" />
+        </zip>
+
+        <delete file="${store.jar}"/>
+    </target>
 </project>

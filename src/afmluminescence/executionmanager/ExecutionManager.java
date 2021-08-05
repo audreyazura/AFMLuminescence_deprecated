@@ -67,6 +67,7 @@ public class ExecutionManager implements Runnable
     private final int m_nElectron;
     private final Metamaterial m_sampleMaterial;
     private final PcgRSFast m_RNGenerator = new PcgRSFast();
+    private final String m_resultDirectory = "Results/";
     private int m_loopCounter = 0;
     private List<QuantumDot> m_QDList = new ArrayList<>();
     
@@ -214,7 +215,7 @@ public class ExecutionManager implements Runnable
         }
         m_gnuplotInstalled = gnuplotExist;
         
-        m_luminescenceFile = new File("Results/Luminescence.dat");
+        m_luminescenceFile = new File(m_resultDirectory + "/Luminescence.dat");
         if (m_gnuplotInstalled)
         {
             try
@@ -419,10 +420,10 @@ public class ExecutionManager implements Runnable
     {
         try
         {
-            String spectraFile = "Results/Spectra" + p_fileIndex + ".png";
-            String timeResolvedFile = "Results/TimeResolved" + p_fileIndex + ".png";
+            String spectraFile = m_resultDirectory + "Spectra" + p_fileIndex + ".png";
+            String timeResolvedFile = m_resultDirectory + "TimeResolved" + p_fileIndex + ".png";
             
-            BufferedWriter gnuplotWriter = new BufferedWriter(new FileWriter("Results/.gnuplotScript.gp"));
+            BufferedWriter gnuplotWriter = new BufferedWriter(new FileWriter(m_resultDirectory + ".gnuplotScript.gp"));
             gnuplotWriter.write("set terminal png");
             gnuplotWriter.newLine();
             gnuplotWriter.write("set ylabel \"Intensity (arb. units.)\"");
@@ -431,7 +432,7 @@ public class ExecutionManager implements Runnable
             gnuplotWriter.newLine();
             gnuplotWriter.write("set output \"" + spectraFile + "\"");
             gnuplotWriter.newLine();
-            gnuplotWriter.write("plot[*:*][0:1.1] \"Results/Spectra" + p_fileIndex + ".dat\" u 1:2 w line t \"Calculated Lum\", \"" + m_luminescenceFile.getCanonicalPath() + "\" u 1:2 w line t \"Experimental Lum\"");
+            gnuplotWriter.write("plot[*:*][0:1.1] \"" + m_resultDirectory + "Spectra" + p_fileIndex + ".dat\" u 1:2 w line t \"Calculated Lum\", \"" + m_luminescenceFile.getCanonicalPath() + "\" u 1:2 w line t \"Experimental Lum\"");
             gnuplotWriter.newLine();
             gnuplotWriter.write("unset output");
             gnuplotWriter.newLine();
@@ -439,14 +440,14 @@ public class ExecutionManager implements Runnable
             gnuplotWriter.newLine();
             gnuplotWriter.write("set xlabel \"Time (ns)\"");
             gnuplotWriter.newLine();
-            gnuplotWriter.write("plot \"Results/TimeResolved" + p_fileIndex + ".dat\" u ($1/1000):2 w points t \"Time Resolved Luminescence\"");
+            gnuplotWriter.write("plot \"" + m_resultDirectory + "TimeResolved" + p_fileIndex + ".dat\" u ($1/1000):2 w points t \"Time Resolved Luminescence\"");
             gnuplotWriter.newLine();
             gnuplotWriter.write("unset output");
             gnuplotWriter.flush();
             gnuplotWriter.close();
 
-            Runtime.getRuntime().exec("gnuplot Results/.gnuplotScript.gp").waitFor();
-            Runtime.getRuntime().exec("rm Results/.gnuplotScript.gp");
+            Runtime.getRuntime().exec("gnuplot " + m_resultDirectory + ".gnuplotScript.gp").waitFor();
+            Runtime.getRuntime().exec("rm " + m_resultDirectory + ".gnuplotScript.gp");
         } 
         catch (IOException|InterruptedException ex)
         {
@@ -471,7 +472,7 @@ public class ExecutionManager implements Runnable
         //saving the result to files and making pictures out of them if gnuplot is installed
         try
         {
-            sorter.saveToFile(new File("Results/TimeResolved" + m_loopCounter + ".dat"), new File("Results/Spectra" + m_loopCounter + ".dat"));
+            sorter.saveToFile(new File(m_resultDirectory + "TimeResolved" + m_loopCounter + ".dat"), new File(m_resultDirectory + "Spectra" + m_loopCounter + ".dat"));
         }
         catch (IOException ex)
         {
@@ -489,10 +490,30 @@ public class ExecutionManager implements Runnable
             System.out.println("Ending the simulation.");
             m_gui.sendMessage("Ending the simulation.");
 
-            System.out.println("x (nm)\ty (nm)\tradius (nm)\theight (nm)\tenergy (eV)");
-            for (QuantumDot qd: m_QDList)
+            try
             {
-                System.out.println(qd.scaledString(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), PhysicsTools.EV));
+                BufferedWriter resultWriter = new BufferedWriter(new FileWriter(m_resultDirectory + "FittedQDDistribution.dat"));
+                
+                resultWriter.write("x (nm)\ty (nm)\tradius (nm)\theight (nm)\tenergy (eV)");
+                resultWriter.newLine();
+                for(QuantumDot qd: m_QDList)
+                {
+                    resultWriter.write(qd.scaledString(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), PhysicsTools.EV));
+                    resultWriter.newLine();
+                }
+                
+                resultWriter.flush();
+                resultWriter.close();
+            }
+            catch (IOException ex)
+            {
+                System.out.println("x (nm)\ty (nm)\tradius (nm)\theight (nm)\tenergy (eV)");
+                for (QuantumDot qd: m_QDList)
+                {
+                    System.out.println(qd.scaledString(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), PhysicsTools.EV));
+                }
+                
+                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, "Problem while writing the result file.", ex);
             }
             
             if (m_gnuplotInstalled)
@@ -502,7 +523,7 @@ public class ExecutionManager implements Runnable
                 {
                     if (m_maxLoop > 1)
                     {
-                        Runtime.getRuntime().exec("convert -delay 500 Results/Spectra*.png Results/Spectra.gif");
+                        Runtime.getRuntime().exec("convert -delay 500 " + m_resultDirectory + "Spectra*.png " + m_resultDirectory + "Spectra.gif");
                     }
                 }
                 catch (IOException ex)
@@ -515,8 +536,8 @@ public class ExecutionManager implements Runnable
                 {
                     try
                     {
-                        m_gui.showPicture(new Image(new FileInputStream("Results/Spectra" + m_loopCounter + ".png")), "Spectra", "left");
-                        m_gui.showPicture(new Image(new FileInputStream("Results/TimeResolved" + m_loopCounter + ".png")), "Time Resolved", "right");
+                        m_gui.showPicture(new Image(new FileInputStream(m_resultDirectory + "Spectra" + m_loopCounter + ".png")), "Spectra", "left");
+                        m_gui.showPicture(new Image(new FileInputStream(m_resultDirectory + "TimeResolved" + m_loopCounter + ".png")), "Time Resolved", "right");
                     }
                     catch (FileNotFoundException ex)
                     {

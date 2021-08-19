@@ -68,6 +68,9 @@ public class ExecutionManager implements Runnable
     private final Metamaterial m_sampleMaterial;
     private final PcgRSFast m_RNGenerator = new PcgRSFast();
     private final String m_resultDirectory = "Results/";
+    private final String m_calculatedSpectraDirectory = m_resultDirectory + "Spectra/";
+    private final String m_calculatedTimeResolvedPLDirectory = m_resultDirectory + "TRPL/";
+    private final String m_fittedQDListsDirectory = m_resultDirectory + "QDLists/";
     private int m_loopCounter = 0;
     private List<QuantumDot> m_QDList = new ArrayList<>();
     
@@ -84,11 +87,11 @@ public class ExecutionManager implements Runnable
         }
         if (!configKeys.contains("QDs_distribution"))
         {
-            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("luminescence property not defined"));
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("QD File property not defined"));
         }
         if (!configKeys.contains("material"))
         {
-            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("luminescence property not defined"));
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("material property not defined"));
         }
         if (!configKeys.contains("number_simulated_electron"))
         {
@@ -156,6 +159,23 @@ public class ExecutionManager implements Runnable
         }
         m_maxLoop = tempnLoops;
 
+        //creating needed directory to store result
+        File spectraDirectory = new File(m_calculatedSpectraDirectory);
+        File TRPLDirectory = new File(m_calculatedTimeResolvedPLDirectory);
+        File QDListDirectory = new File(m_fittedQDListsDirectory);
+        if(!spectraDirectory.isDirectory())
+        {
+            spectraDirectory.mkdirs();
+        }
+        if(!TRPLDirectory.isDirectory())
+        {
+            TRPLDirectory.mkdirs();
+        }
+        if(!QDListDirectory.isDirectory())
+        {
+            QDListDirectory.mkdirs();
+        }
+
         //getting the luminescence as a function
         HashMap<BigDecimal, BigDecimal> lumValues = new HashMap<>();
         BigDecimal maxCounts = BigDecimal.ZERO;
@@ -215,17 +235,14 @@ public class ExecutionManager implements Runnable
         }
         m_gnuplotInstalled = gnuplotExist;
         
-        m_luminescenceFile = new File(m_resultDirectory + "/Luminescence.dat");
+        //if gnuplot is installed, we will use the luminescence to generate spectra image, so we save it in a format we know is readable by gnuplot
+        m_luminescenceFile = new File(m_calculatedSpectraDirectory + "/Luminescence.dat");
         if (m_gnuplotInstalled)
         {
             try
             {
                 //creating the luminescence file for gnuplot
                 Set<BigDecimal> energySet = m_luminescence.getAbscissa();
-                if (!m_luminescenceFile.getParentFile().isDirectory())
-                {
-                    m_luminescenceFile.getParentFile().mkdirs();
-                }
                 BufferedWriter lumWriter = new BufferedWriter(new FileWriter(m_luminescenceFile));
                 lumWriter.write("Wavelength (nm)\tIntensity (cps)");
                 for (BigDecimal abscissa: energySet)
@@ -416,12 +433,12 @@ public class ExecutionManager implements Runnable
         return valid;
     }
     
-    private void createPictures (int p_fileIndex)
+    private void createPictures (int p_fileIndex, String p_spectraFile, String p_TRPLFile)
     {
         try
         {
-            String spectraFile = m_resultDirectory + "Spectra" + p_fileIndex + ".png";
-            String timeResolvedFile = m_resultDirectory + "TimeResolved" + p_fileIndex + ".png";
+            String spectraFile = m_calculatedSpectraDirectory + "Spectra" + p_fileIndex + ".png";
+            String timeResolvedFile = m_calculatedTimeResolvedPLDirectory + "TimeResolved" + p_fileIndex + ".png";
             
             BufferedWriter gnuplotWriter = new BufferedWriter(new FileWriter(m_resultDirectory + ".gnuplotScript.gp"));
             gnuplotWriter.write("set terminal png");
@@ -432,7 +449,7 @@ public class ExecutionManager implements Runnable
             gnuplotWriter.newLine();
             gnuplotWriter.write("set output \"" + spectraFile + "\"");
             gnuplotWriter.newLine();
-            gnuplotWriter.write("plot[*:*][0:1.1] \"" + m_resultDirectory + "Spectra" + p_fileIndex + ".dat\" u 1:2 w line t \"Calculated Lum\", \"" + m_luminescenceFile.getCanonicalPath() + "\" u 1:2 w line t \"Experimental Lum\"");
+            gnuplotWriter.write("plot[*:*][0:1.1] \"" + p_spectraFile + "\" u 1:2 w line t \"Calculated Lum\", \"" + m_luminescenceFile.getCanonicalPath() + "\" u 1:2 w line t \"Experimental Lum\"");
             gnuplotWriter.newLine();
             gnuplotWriter.write("unset output");
             gnuplotWriter.newLine();
@@ -440,7 +457,7 @@ public class ExecutionManager implements Runnable
             gnuplotWriter.newLine();
             gnuplotWriter.write("set xlabel \"Time (ns)\"");
             gnuplotWriter.newLine();
-            gnuplotWriter.write("plot \"" + m_resultDirectory + "TimeResolved" + p_fileIndex + ".dat\" u ($1/1000):2 w points t \"Time Resolved Luminescence\"");
+            gnuplotWriter.write("plot \"" + p_TRPLFile + "\" u ($1/1000):2 w points t \"Time Resolved Luminescence\"");
             gnuplotWriter.newLine();
             gnuplotWriter.write("unset output");
             gnuplotWriter.flush();
@@ -470,9 +487,11 @@ public class ExecutionManager implements Runnable
         m_loopCounter += 1;
         
         //saving the result to files and making pictures out of them if gnuplot is installed
+        String spectraFilePath = m_calculatedSpectraDirectory + "Spectra" + m_loopCounter + ".dat";
+        String TRPLFilePath = m_calculatedTimeResolvedPLDirectory + "TimeResolved" + m_loopCounter + ".dat";
         try
         {
-            sorter.saveToFile(new File(m_resultDirectory + "TimeResolved" + m_loopCounter + ".dat"), new File(m_resultDirectory + "Spectra" + m_loopCounter + ".dat"));
+            sorter.saveToFile(new File(TRPLFilePath), new File(spectraFilePath));
         }
         catch (IOException ex)
         {
@@ -481,7 +500,35 @@ public class ExecutionManager implements Runnable
 
         if (m_gnuplotInstalled)
         {
-            createPictures(m_loopCounter);
+            createPictures(m_loopCounter, spectraFilePath, TRPLFilePath);
+        }
+        
+        System.out.println("Saving fitted QD list.");
+        m_gui.sendMessage("Saving fitted QD list.");
+        try
+        {
+            BufferedWriter resultWriter = new BufferedWriter(new FileWriter(m_fittedQDListsDirectory + "FittedQDDistribution" + m_loopCounter + ".dat"));
+
+            resultWriter.write("x (nm)\ty (nm)\tradius (nm)\theight (nm)\tenergy (eV)");
+            resultWriter.newLine();
+            for(QuantumDot qd: m_QDList)
+            {
+                resultWriter.write(qd.scaledString(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), PhysicsTools.EV));
+                resultWriter.newLine();
+            }
+
+            resultWriter.flush();
+            resultWriter.close();
+        }
+        catch (IOException ex)
+        {
+            System.out.println("x (nm)\ty (nm)\tradius (nm)\theight (nm)\tenergy (eV)");
+            for (QuantumDot qd: m_QDList)
+            {
+                System.out.println(qd.scaledString(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), PhysicsTools.EV));
+            }
+
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, "Problem while writing the result file.", ex);
         }
         
         //testing if the simulation finished or has to continue
@@ -489,32 +536,6 @@ public class ExecutionManager implements Runnable
         {
             System.out.println("Ending the simulation.");
             m_gui.sendMessage("Ending the simulation.");
-
-            try
-            {
-                BufferedWriter resultWriter = new BufferedWriter(new FileWriter(m_resultDirectory + "FittedQDDistribution.dat"));
-                
-                resultWriter.write("x (nm)\ty (nm)\tradius (nm)\theight (nm)\tenergy (eV)");
-                resultWriter.newLine();
-                for(QuantumDot qd: m_QDList)
-                {
-                    resultWriter.write(qd.scaledString(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), PhysicsTools.EV));
-                    resultWriter.newLine();
-                }
-                
-                resultWriter.flush();
-                resultWriter.close();
-            }
-            catch (IOException ex)
-            {
-                System.out.println("x (nm)\ty (nm)\tradius (nm)\theight (nm)\tenergy (eV)");
-                for (QuantumDot qd: m_QDList)
-                {
-                    System.out.println(qd.scaledString(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), PhysicsTools.EV));
-                }
-                
-                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, "Problem while writing the result file.", ex);
-            }
             
             if (m_gnuplotInstalled)
             {
@@ -523,7 +544,7 @@ public class ExecutionManager implements Runnable
                 {
                     if (m_maxLoop > 1)
                     {
-                        Runtime.getRuntime().exec("convert -delay 500 " + m_resultDirectory + "Spectra*.png " + m_resultDirectory + "Spectra.gif");
+                        Runtime.getRuntime().exec("convert -delay 500 " + m_calculatedSpectraDirectory + "Spectra*.png " + m_calculatedSpectraDirectory + "Spectra.gif");
                     }
                 }
                 catch (IOException ex)
@@ -536,8 +557,8 @@ public class ExecutionManager implements Runnable
                 {
                     try
                     {
-                        m_gui.showPicture(new Image(new FileInputStream(m_resultDirectory + "Spectra" + m_loopCounter + ".png")), "Spectra", "left");
-                        m_gui.showPicture(new Image(new FileInputStream(m_resultDirectory + "TimeResolved" + m_loopCounter + ".png")), "Time Resolved", "right");
+                        m_gui.showPicture(new Image(new FileInputStream(m_calculatedSpectraDirectory + "Spectra" + m_loopCounter + ".png")), "Spectra", "left");
+                        m_gui.showPicture(new Image(new FileInputStream(m_calculatedTimeResolvedPLDirectory + "TimeResolved" + m_loopCounter + ".png")), "Time Resolved", "right");
                     }
                     catch (FileNotFoundException ex)
                     {
@@ -550,7 +571,6 @@ public class ExecutionManager implements Runnable
         {
             //THIS cause an stark increase in memory usage
             m_QDList = fit.getFittedQDs();
-//            m_buffer.requestReinitialisation();
             
             Instant endTime = Instant.now();
             System.out.println("Calculation time: " + Duration.between(startTime, endTime).toMinutes() + " min " + Duration.between(startTime, endTime).toSecondsPart() + " s");
@@ -565,7 +585,6 @@ public class ExecutionManager implements Runnable
     @Override
     public void run()
     {
-        //sometime doesn't start?
         launchCalculation();
     }
 }

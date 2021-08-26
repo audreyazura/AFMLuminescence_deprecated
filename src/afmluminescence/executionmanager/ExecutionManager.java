@@ -578,6 +578,10 @@ public class ExecutionManager implements Runnable
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, "Problem while writing the result file.", ex);
         }
         
+        Instant endTime = Instant.now();
+        System.out.println("Calculation time: " + Duration.between(startTime, endTime).toMinutes() + " min " + Duration.between(startTime, endTime).toSecondsPart() + " s");
+        m_gui.sendMessage("Calculation time: " + Duration.between(startTime, endTime).toMinutes() + " min " + Duration.between(startTime, endTime).toSecondsPart() + " s");
+        
         //testing if the simulation finished or has to continue
         if (!m_isFittingMode || fit.isGoodFit() || m_loopCounter >= m_maxLoop)
         {
@@ -618,10 +622,6 @@ public class ExecutionManager implements Runnable
         {
             //we can only enter there if we are in fitting mode, so no check needed
             m_QDList = fit.getFittedQDs();
-            
-            Instant endTime = Instant.now();
-            System.out.println("Calculation time: " + Duration.between(startTime, endTime).toMinutes() + " min " + Duration.between(startTime, endTime).toSecondsPart() + " s");
-            m_gui.sendMessage("Calculation time: " + Duration.between(startTime, endTime).toMinutes() + " min " + Duration.between(startTime, endTime).toSecondsPart() + " s");
             
             System.out.println("\nStarting a new simulation");
             m_gui.sendMessage("\nStarting a new simulation");

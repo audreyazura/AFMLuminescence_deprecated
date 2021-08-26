@@ -60,6 +60,7 @@ public class ExecutionManager implements Runnable
     private final BigDecimal m_sampleYSize;
     private final BigDecimal m_timeStep;
     private final boolean m_gnuplotInstalled;
+    private final boolean m_isFittingMode;
     private final ContinuousFunction m_luminescence;
     private final File m_luminescenceFile;
     private final GUIUpdater m_gui;
@@ -81,6 +82,10 @@ public class ExecutionManager implements Runnable
         //testing if the property file has the correct fields
         Set<String> configKeys = p_configuration.stringPropertyNames();
         Pattern timeStepKeyPattern = Pattern.compile("simulation_timestep_.{0,1}s");
+        if (!configKeys.contains("execution_mode"))
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("execution mode property not defined"));
+        }
         if (!configKeys.contains("luminescence"))
         {
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("luminescence property not defined"));
@@ -122,6 +127,14 @@ public class ExecutionManager implements Runnable
         
         m_gui = p_gui;
         
+        //select an execution mode
+        String executionMode = p_configuration.getProperty("execution_mode");
+        m_isFittingMode = executionMode.equals("fitting");
+        if (!m_isFittingMode && !executionMode.equals("simulation"))
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("Please select an execution mode between \"fitting\" and \"simulation\""));
+        }
+
         //initializing timestep
         BigDecimal timeStepUnitMultiplier = PhysicsTools.UnitsPrefix.selectPrefix(timeStepKey.split("_")[2]).getMultiplier();
         BigDecimal tempTimestep = BigDecimal.ZERO;
@@ -148,16 +161,23 @@ public class ExecutionManager implements Runnable
         m_nElectron = tempnElectron;
         
         //initializing the maximum number of loops
-        int tempnLoops = 0;
-        try
+        if (m_isFittingMode)
         {
-            tempnLoops = Integer.parseInt(p_configuration.getProperty("maximum_fitting_repetition"));
+            int tempnLoops = 0;
+            try
+            {
+                tempnLoops = Integer.parseInt(p_configuration.getProperty("maximum_fitting_repetition"));
+            }
+            catch(NumberFormatException ex)
+            {
+                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, "maximum number of fitting loop has to be an integer", ex);
+            }
+            m_maxLoop = tempnLoops;
         }
-        catch(NumberFormatException ex)
+        else
         {
-            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, "maximum number of fitting loop has to be an integer", ex);
+            m_maxLoop = 1;
         }
-        m_maxLoop = tempnLoops;
 
         //creating needed directory to store result
         File spectraDirectory = new File(m_calculatedSpectraDirectory);
@@ -175,50 +195,6 @@ public class ExecutionManager implements Runnable
         {
             QDListDirectory.mkdirs();
         }
-
-        //getting the luminescence as a function
-        HashMap<BigDecimal, BigDecimal> lumValues = new HashMap<>();
-        BigDecimal maxCounts = BigDecimal.ZERO;
-        try
-        {
-            BufferedReader lumReader = new BufferedReader(new FileReader(new File(p_configuration.getProperty("luminescence"))));
-            Pattern numberRegex = Pattern.compile("^\\-?\\d+(\\.\\d+(e(\\+|\\-)\\d+)?)?");
-            String line;
-            while (((line = lumReader.readLine()) != null))
-            {	    
-                String[] lineSplit = line.strip().split(";");
-
-                if(numberRegex.matcher(lineSplit[0]).matches())
-                {
-                    BigDecimal energy = PhysicsTools.h.multiply(PhysicsTools.c).divide((new BigDecimal(lineSplit[0])).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()), MathContext.DECIMAL128);
-                    BigDecimal counts = new BigDecimal(lineSplit[1]);
-                    
-                    lumValues.put(energy, counts);
-                    
-                    if (counts.compareTo(maxCounts) > 0)
-                    {
-                        maxCounts = counts;
-                    }
-                }
-            }
-        }
-        catch (IOException ex)
-        {
-            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
-        if (lumValues.isEmpty())
-        {
-            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("Luminescence file missing or badly formatted."));
-        }
-        
-        //normalisation of the luminescence
-        for (BigDecimal abscissa: lumValues.keySet())
-        {
-            lumValues.put(abscissa, lumValues.get(abscissa).divide(maxCounts, MathContext.DECIMAL128));
-        }
-        
-        m_luminescence = new ContinuousFunction(lumValues);
         
         //testing if gnuplot is installed
         boolean gnuplotExist;
@@ -234,31 +210,83 @@ public class ExecutionManager implements Runnable
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.FINEST, "Gnuplot is missing.", ex);
         }
         m_gnuplotInstalled = gnuplotExist;
-        
-        //if gnuplot is installed, we will use the luminescence to generate spectra image, so we save it in a format we know is readable by gnuplot
-        m_luminescenceFile = new File(m_calculatedSpectraDirectory + "/Luminescence.dat");
-        if (m_gnuplotInstalled)
+
+        //getting the luminescence as a function if in fitting mode, else the object is initialized to null
+        if (m_isFittingMode)
         {
+            HashMap<BigDecimal, BigDecimal> lumValues = new HashMap<>();
+            BigDecimal maxCounts = BigDecimal.ZERO;
             try
             {
-                //creating the luminescence file for gnuplot
-                Set<BigDecimal> energySet = m_luminescence.getAbscissa();
-                BufferedWriter lumWriter = new BufferedWriter(new FileWriter(m_luminescenceFile));
-                lumWriter.write("Wavelength (nm)\tIntensity (cps)");
-                for (BigDecimal abscissa: energySet)
-                {
-                    BigDecimal wavelengthNano = ((PhysicsTools.h.multiply(PhysicsTools.c)).divide(abscissa, MathContext.DECIMAL128)).divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
+                BufferedReader lumReader = new BufferedReader(new FileReader(new File(p_configuration.getProperty("luminescence"))));
+                Pattern numberRegex = Pattern.compile("^\\-?\\d+(\\.\\d+(e(\\+|\\-)\\d+)?)?");
+                String line;
+                while (((line = lumReader.readLine()) != null))
+                {	    
+                    String[] lineSplit = line.strip().split(";");
 
-                    lumWriter.newLine();
-                    lumWriter.write(wavelengthNano.toPlainString() + "\t" + m_luminescence.getValueAtPosition(abscissa));
+                    if(numberRegex.matcher(lineSplit[0]).matches())
+                    {
+                        BigDecimal energy = PhysicsTools.h.multiply(PhysicsTools.c).divide((new BigDecimal(lineSplit[0])).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()), MathContext.DECIMAL128);
+                        BigDecimal counts = new BigDecimal(lineSplit[1]);
+
+                        lumValues.put(energy, counts);
+
+                        if (counts.compareTo(maxCounts) > 0)
+                        {
+                            maxCounts = counts;
+                        }
+                    }
                 }
-                lumWriter.flush();
-                lumWriter.close();
             }
             catch (IOException ex)
             {
-                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, "Impossible to create the luminescence file.", ex);
+                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, ex);
             }
+
+            if (lumValues.isEmpty())
+            {
+                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("Luminescence file missing or badly formatted."));
+            }
+
+            //normalisation of the luminescence
+            for (BigDecimal abscissa: lumValues.keySet())
+            {
+                lumValues.put(abscissa, lumValues.get(abscissa).divide(maxCounts, MathContext.DECIMAL128));
+            }
+
+            m_luminescence = new ContinuousFunction(lumValues);
+            
+            //if gnuplot is installed, we will use the luminescence to generate spectra image, so we save it in a format we know is readable by gnuplot
+            m_luminescenceFile = new File(m_calculatedSpectraDirectory + "/Luminescence.dat");
+            if (m_gnuplotInstalled)
+            {
+                try
+                {
+                    //creating the luminescence file for gnuplot
+                    Set<BigDecimal> energySet = m_luminescence.getAbscissa();
+                    BufferedWriter lumWriter = new BufferedWriter(new FileWriter(m_luminescenceFile));
+                    lumWriter.write("Wavelength (nm)\tIntensity (cps)");
+                    for (BigDecimal abscissa: energySet)
+                    {
+                        BigDecimal wavelengthNano = ((PhysicsTools.h.multiply(PhysicsTools.c)).divide(abscissa, MathContext.DECIMAL128)).divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
+
+                        lumWriter.newLine();
+                        lumWriter.write(wavelengthNano.toPlainString() + "\t" + m_luminescence.getValueAtPosition(abscissa));
+                    }
+                    lumWriter.flush();
+                    lumWriter.close();
+                }
+                catch (IOException ex)
+                {
+                    Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, "Impossible to create the luminescence file.", ex);
+                }
+            }
+        }
+        else
+        {
+            m_luminescence = null;
+            m_luminescenceFile = null;
         }
         
         //creating the material and metamaterial database
@@ -335,9 +363,7 @@ public class ExecutionManager implements Runnable
                 int nQDs = 300;
                 for (int i = 0 ; i < nQDs ; i += 1)
                 {
-                    BigDecimal x;
-                    BigDecimal y;
-                    BigDecimal radius;
+                    BigDecimal x, y, radius, height;
                     QuantumDot createdQD;
 
                     do
@@ -350,8 +376,13 @@ public class ExecutionManager implements Runnable
                             radius = formatBigDecimal((new BigDecimal(m_RNGenerator.nextGaussian() * 2.1 + 12)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
 
                         }while (radius.compareTo(BigDecimal.ZERO) <= 0);
+                        
+                        do
+                        {
+                            height = formatBigDecimal((new BigDecimal(m_RNGenerator.nextGaussian() * 0.6 + 2.5)).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()));
+                        }while(height.compareTo(BigDecimal.ZERO) <= 0);
 
-                        createdQD = new QuantumDot(x, y, radius, radius, m_timeStep, m_sampleMaterial);
+                        createdQD = new QuantumDot(x, y, radius, height, m_timeStep, m_sampleMaterial);
 
                     }while(!validPosition(createdQD, m_QDList));
                     
@@ -439,6 +470,11 @@ public class ExecutionManager implements Runnable
         {
             String spectraFile = m_calculatedSpectraDirectory + "Spectra" + p_fileIndex + ".png";
             String timeResolvedFile = m_calculatedTimeResolvedPLDirectory + "TimeResolved" + p_fileIndex + ".png";
+            String experimentalLumLine = "";
+            if (m_isFittingMode)
+            {
+                experimentalLumLine = ","  + m_luminescenceFile.getCanonicalPath() + "\" u 1:2 w line t \"Experimental Lum\"";
+            }
             
             BufferedWriter gnuplotWriter = new BufferedWriter(new FileWriter(m_resultDirectory + ".gnuplotScript.gp"));
             gnuplotWriter.write("set terminal png");
@@ -449,7 +485,7 @@ public class ExecutionManager implements Runnable
             gnuplotWriter.newLine();
             gnuplotWriter.write("set output \"" + spectraFile + "\"");
             gnuplotWriter.newLine();
-            gnuplotWriter.write("plot[*:*][0:1.1] \"" + p_spectraFile + "\" u 1:2 w line t \"Calculated Lum\", \"" + m_luminescenceFile.getCanonicalPath() + "\" u 1:2 w line t \"Experimental Lum\"");
+            gnuplotWriter.write("plot[*:*][0:1.1] \"" + p_spectraFile + "\" u 1:2 w line t \"Calculated Lum\"" + experimentalLumLine);
             gnuplotWriter.newLine();
             gnuplotWriter.write("unset output");
             gnuplotWriter.newLine();
@@ -477,12 +513,23 @@ public class ExecutionManager implements Runnable
         System.out.println("Simulation finished.");
         m_gui.sendMessage("Simulation finished.");
         
-        System.out.println("Sorting the results for further interpretation.");
-        m_gui.sendMessage("Sorting the results for further interpretation.");
-        SimulationSorter sorter = new SimulationSorter(m_luminescence.getMeanIntervalSize(), new ArrayList(p_recombinationTimes), new ArrayList(p_recombinationEnergies));
-        System.out.println("Trying to fit the luminescence.");
-        m_gui.sendMessage("Trying to fit the luminescence.");
-        QDFitter fit = new QDFitter(m_QDList, m_timeStep, m_luminescence, sorter, m_gui, m_sampleMaterial);
+        //if there is a luminesence file (fitting case), we take its interval, otherwise we take a default 0. interval
+        System.out.println("Sorting the results.");
+        m_gui.sendMessage("Sorting the results.");
+        BigDecimal spectraInterval = new BigDecimal("0.001").multiply(PhysicsTools.EV);
+        if (m_isFittingMode)
+        {
+            spectraInterval = m_luminescence.getMeanIntervalSize();
+        }
+        SimulationSorter sorter = new SimulationSorter(spectraInterval, new ArrayList(p_recombinationTimes), new ArrayList(p_recombinationEnergies));
+        
+        QDFitter fit = new QDFitter();
+        if (m_isFittingMode)
+        {
+            System.out.println("Trying to fit the luminescence.");
+            m_gui.sendMessage("Trying to fit the luminescence.");
+            fit = new QDFitter(m_QDList, m_timeStep, m_luminescence, sorter, m_gui, m_sampleMaterial);
+        }
         
         m_loopCounter += 1;
         
@@ -532,7 +579,7 @@ public class ExecutionManager implements Runnable
         }
         
         //testing if the simulation finished or has to continue
-        if (fit.isGoodFit() || m_loopCounter >= m_maxLoop)
+        if (!m_isFittingMode || fit.isGoodFit() || m_loopCounter >= m_maxLoop)
         {
             System.out.println("Ending the simulation.");
             m_gui.sendMessage("Ending the simulation.");
@@ -569,7 +616,7 @@ public class ExecutionManager implements Runnable
         }
         else
         {
-            //THIS cause an stark increase in memory usage
+            //we can only enter there if we are in fitting mode, so no check needed
             m_QDList = fit.getFittedQDs();
             
             Instant endTime = Instant.now();

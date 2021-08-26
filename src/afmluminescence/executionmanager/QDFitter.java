@@ -38,6 +38,12 @@ public class QDFitter
     private final boolean m_goodFit;
     private final List<QuantumDot> m_fittedQDs;
     
+    public QDFitter ()
+    {
+        m_goodFit = true;
+        m_fittedQDs = new ArrayList<>();
+    }
+    
     public QDFitter (List<QuantumDot> p_QDList, BigDecimal p_timeStep, ContinuousFunction p_luminescence, SimulationSorter p_sorter, GUIUpdater p_gui, Metamaterial p_sampleMaterial)
     {
         ContinuousFunction calculationResult = p_sorter.getLuminescence();

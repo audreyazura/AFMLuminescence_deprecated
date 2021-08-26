@@ -44,7 +44,9 @@ public class SimulationSorter
         p_timesList.sort(null);
         p_energiesList.sort(null);
         
-        //cutting the timespan of the experiment into a given number of intervals (here 100) and puting the number of recombined electrons during each intervals
+        //INTERVAL CHOICE TO BE REWORKED, DOESN'T WORK WELL AT THE MOMENT
+
+        //cutting the timespan of the experiment into a given number of intervals (here 4000) and puting the number of recombined electrons during each intervals
         BigDecimal maxTime = p_timesList.get(p_timesList.size() - 1);
         BigDecimal timeInterval = maxTime.divide(new BigDecimal("4000"), MathContext.DECIMAL128);
         for (BigDecimal currentTime = BigDecimal.ZERO ; currentTime.compareTo(maxTime) == -1 ; currentTime = currentTime.add(timeInterval))
@@ -132,7 +134,7 @@ public class SimulationSorter
         //writing wavelength calculated from energies
         Set<BigDecimal> energySet = new TreeSet(m_energies.keySet());
         BufferedWriter energyWriter = new BufferedWriter(new FileWriter(energyFile));
-        energyWriter.write("Wavelength (nm)\tIntensity (cps)");
+        energyWriter.write("Wavelength (nm)\tIntensity");
         for (BigDecimal energy: energySet)
         {
             BigDecimal wavelengthNano = ((PhysicsTools.h.multiply(PhysicsTools.c)).divide(energy, MathContext.DECIMAL128)).divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);

@@ -18,10 +18,10 @@ package afmluminescence.executionmanager;
 
 import afmluminescence.luminescencegenerator.GeneratorManager;
 import static afmluminescence.luminescencegenerator.GeneratorManager.formatBigDecimal;
-import afmluminescence.luminescencegenerator.Material;
-import afmluminescence.luminescencegenerator.Metamaterial;
 import afmluminescence.luminescencegenerator.QuantumDot;
 import com.github.audreyazura.commonutils.ContinuousFunction;
+import com.github.audreyazura.commonutils.Material;
+import com.github.audreyazura.commonutils.Metamaterial;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.io.BufferedReader;
@@ -293,6 +293,7 @@ public class ExecutionManager implements Runnable
         String materialDirectoryPath = "ressources/materials/";
         Map<String, Material> materialList = new HashMap<>();
         File materialDirectory = new File(materialDirectoryPath);
+        SCSVLoader functionLoader = new SCSVLoader();
         for (String fileName: materialDirectory.list())
         {
             String[] fileNameSplit = fileName.split("\\.");
@@ -304,7 +305,7 @@ public class ExecutionManager implements Runnable
                     Properties materialParameters = new Properties();
                     materialParameters.load(parameterReader);
 
-                    materialList.put(materialParameters.getProperty("name"), new Material(materialParameters));
+                    materialList.put(materialParameters.getProperty("name"), new Material(materialParameters, functionLoader));
                 }
                 catch (IOException ex)
                 {

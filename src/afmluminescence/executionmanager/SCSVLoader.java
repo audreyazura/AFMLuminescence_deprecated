@@ -17,6 +17,7 @@
 package afmluminescence.executionmanager;
 
 import com.github.audreyazura.commonutils.ContinuousFunction;
+import com.github.audreyazura.commonutils.ContinuousFunctionFileLoader;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import java.io.File;
 import java.io.IOException;
@@ -26,17 +27,16 @@ import java.util.zip.DataFormatException;
  *
  * @author audreyazura
  */
-public class SCSVLoader
+public class SCSVLoader implements ContinuousFunctionFileLoader
 {
-    private final ContinuousFunction m_function;
-    
-    public SCSVLoader (File p_input, PhysicsTools.UnitsPrefix p_abscissaScale, PhysicsTools.UnitsPrefix p_ordinateScale) throws DataFormatException, ArrayIndexOutOfBoundsException, IOException
+    public SCSVLoader ()
     {
-        m_function = new ContinuousFunction(p_input, p_abscissaScale.getMultiplier(), p_ordinateScale.getMultiplier(), "scsv", ";", 2, new int[] {0,1});
+        
     }
     
-    public ContinuousFunction getFunction()
+    @Override
+    public ContinuousFunction loadFunction (File p_functionFile, PhysicsTools.UnitsPrefix p_abscissaUnit, PhysicsTools.UnitsPrefix p_ordinateUnit) throws DataFormatException, IOException, ArrayIndexOutOfBoundsException
     {
-        return new ContinuousFunction(m_function);
+        return new ContinuousFunction(p_functionFile, p_abscissaUnit.getMultiplier(), p_ordinateUnit.getMultiplier(), "scsv", ";", 2, new int[] {0,1});
     }
 }

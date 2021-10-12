@@ -47,7 +47,7 @@ public class ElectronMover implements Runnable
         m_electronList = new ArrayList(p_electronToTreat);
         m_randomGenerator = new PcgRSFast();
         
-        m_QDMap = new HashMap(p_map);
+        m_QDMap = p_map;
     }
     
     public boolean allRecombined()

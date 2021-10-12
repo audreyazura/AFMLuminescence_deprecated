@@ -16,9 +16,9 @@
  */
 package afmluminescence.executionmanager;
 
-import afmluminescence.luminescencegenerator.Metamaterial;
 import afmluminescence.luminescencegenerator.QuantumDot;
 import com.github.audreyazura.commonutils.ContinuousFunction;
+import com.github.audreyazura.commonutils.Metamaterial;
 import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -97,7 +97,7 @@ public class QDFitter
                 TreeSet<BigDecimal> abscissa = new TreeSet(numberOfQDToRemove.keySet());
                 for (QuantumDot QD: p_QDList)
                 {
-                    BigDecimal QDEnergy = QD.getEnergy();
+                    BigDecimal QDEnergy = QD.getMeanEnergy();
                     
                     if (QDEnergy.compareTo(calculationNeededLowest) < 0 || QDEnergy.compareTo(calculationNeededHighest) > 0)
                     {
@@ -137,7 +137,7 @@ public class QDFitter
                     {
                         QuantumDot workingQD = availableQDIterator.next();
                         
-                        BigDecimal multiplier = targetEnergy.divide(workingQD.getEnergy(), MathContext.DECIMAL128);
+                        BigDecimal multiplier = targetEnergy.divide(workingQD.getMeanEnergy(), MathContext.DECIMAL128);
                         tempQDList.add(workingQD.copyWithSizeChange(multiplier, p_timeStep, p_sampleMaterial));
                         
                         numberOfQDToMove -= 1;
@@ -288,41 +288,41 @@ public class QDFitter
         }
     }
     
-    private QuantumDot getQDInEnergyRange (QuantumDot p_originalQD, BigDecimal p_rangeMin, BigDecimal p_intervalSize, BigDecimal p_timeStep, Metamaterial p_sampleMaterial)
-    {
-        BigDecimal newQDEnergy = BigDecimal.ZERO;
-        PcgRSFast RNGenerator = new PcgRSFast();
-        QuantumDot newQD;
-        
-        //we select the new QD energy randomly in the interval ]minEnergy, maxEnergy+intervalSize]. intervalSize can be negative.
-        do
-        {
-            newQDEnergy = p_rangeMin.add(p_intervalSize.multiply(new BigDecimal(RNGenerator.nextDouble(true, true))));
-        }while(newQDEnergy.signum() < 0);
-
-        BigDecimal sizeMultiplier = p_originalQD.getEnergy().divide(newQDEnergy, MathContext.DECIMAL128); //energy multiplier = newEnergy / oldEnergy, size multiplier = 1 / (energy multiplier)
-        newQD = p_originalQD.copyWithSizeChange(sizeMultiplier, p_timeStep, p_sampleMaterial);
-        
-        return newQD;
-    }
-    
-    private ArrayList<QuantumDot> swapQDs (ArrayList<QuantumDot> p_qdToSwap, BigDecimal p_intervalSize, BigDecimal p_pivotEnergy, BigDecimal p_timeStep, Metamaterial p_sampleMaterial, double p_swapProba)
-    {
-        ArrayList<QuantumDot> swappedList = new ArrayList<>();
-        PcgRSFast RNGenerator = new PcgRSFast();
-        
-        for (QuantumDot qd: p_qdToSwap)
-        {
-            if (RNGenerator.nextDouble() < p_swapProba)
-            {
-                qd = getQDInEnergyRange(qd, p_pivotEnergy, p_intervalSize, p_timeStep, p_sampleMaterial);
-            }
-            
-            swappedList.add(qd);
-        }
-        
-        return swappedList;
-    }
+//    private QuantumDot getQDInEnergyRange (QuantumDot p_originalQD, BigDecimal p_rangeMin, BigDecimal p_intervalSize, BigDecimal p_timeStep, Metamaterial p_sampleMaterial)
+//    {
+//        BigDecimal newQDEnergy = BigDecimal.ZERO;
+//        PcgRSFast RNGenerator = new PcgRSFast();
+//        QuantumDot newQD;
+//        
+//        //we select the new QD energy randomly in the interval ]minEnergy, maxEnergy+intervalSize]. intervalSize can be negative.
+//        do
+//        {
+//            newQDEnergy = p_rangeMin.add(p_intervalSize.multiply(new BigDecimal(RNGenerator.nextDouble(true, true))));
+//        }while(newQDEnergy.signum() < 0);
+//
+//        BigDecimal sizeMultiplier = p_originalQD.getMeanEnergy().divide(newQDEnergy, MathContext.DECIMAL128); //energy multiplier = newEnergy / oldEnergy, size multiplier = 1 / (energy multiplier)
+//        newQD = p_originalQD.copyWithSizeChange(sizeMultiplier, p_timeStep, p_sampleMaterial);
+//        
+//        return newQD;
+//    }
+//    
+//    private ArrayList<QuantumDot> swapQDs (ArrayList<QuantumDot> p_qdToSwap, BigDecimal p_intervalSize, BigDecimal p_pivotEnergy, BigDecimal p_timeStep, Metamaterial p_sampleMaterial, double p_swapProba)
+//    {
+//        ArrayList<QuantumDot> swappedList = new ArrayList<>();
+//        PcgRSFast RNGenerator = new PcgRSFast();
+//        
+//        for (QuantumDot qd: p_qdToSwap)
+//        {
+//            if (RNGenerator.nextDouble() < p_swapProba)
+//            {
+//                qd = getQDInEnergyRange(qd, p_pivotEnergy, p_intervalSize, p_timeStep, p_sampleMaterial);
+//            }
+//            
+//            swappedList.add(qd);
+//        }
+//        
+//        return swappedList;
+//    }
     
     public ArrayList<QuantumDot> getFittedQDs()
     {

@@ -39,6 +39,7 @@ public class Electron extends AbsorberObject
     
     private ElectronState m_state;
     private QuantumDot m_trapingDot;
+    private BigDecimal m_recombinationEnergy = null;
     
     public Electron (int p_id, BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_speedX, BigDecimal p_speedY)
     {
@@ -69,13 +70,13 @@ public class Electron extends AbsorberObject
     
     public BigDecimal getRecombinationEnergy() throws AbsentInformationException
     {
-        if (m_trapingDot != null)
+        if (m_recombinationEnergy == null || m_recombinationEnergy.compareTo(BigDecimal.ZERO) < 0)
         {
-            return m_trapingDot.getEnergy();
+            throw new AbsentInformationException();
         }
         else
         {
-            throw new AbsentInformationException();
+            return m_recombinationEnergy;
         }
     }
     
@@ -129,7 +130,7 @@ public class Electron extends AbsorberObject
                     {
                         for (QuantumDot QD: currentQDSet)
                         {
-                            if (QD.canCapture() && !testedDots.contains(QD))
+                            if (!testedDots.contains(QD))
                             {
                                 BigDecimal distance = getDistance(QD.getX(), QD.getY()).subtract(QD.getRadius());
                                 if (distance.compareTo(electronVision) <= 0)
@@ -203,7 +204,7 @@ public class Electron extends AbsorberObject
             }
             else
             {
-                if (m_trapingDot.recombine(p_RNG))
+                if ((m_recombinationEnergy = m_trapingDot.recombine(p_RNG)).compareTo(BigDecimal.ZERO) >= 0)
                 {
                     m_state = ElectronState.RECOMBINED;
                 }

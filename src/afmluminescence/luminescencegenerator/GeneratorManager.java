@@ -221,12 +221,6 @@ public class GeneratorManager implements Runnable
                 //sending the new data to the visualisation interface
                 BigDecimal timeNanosec = (timePassed.divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128)).setScale(3, RoundingMode.HALF_UP);
                 m_output.logObjects(recalculatedELectronList, m_QDList, timeNanosec);
-                
-                //cleaning the recombined QD
-                for (QuantumDot QD: m_QDList)
-                {
-                    QD.resetRecombine();
-                }
             }
         }
         catch (InterruptedException ex)

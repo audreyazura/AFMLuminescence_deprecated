@@ -18,6 +18,7 @@ package afmluminescence.executionmanager;
 
 import afmluminescence.luminescencegenerator.Electron;
 import afmluminescence.luminescencegenerator.GeneratorManager;
+import com.github.audreyazura.commonutils.PhysicsTools;
 import com.sun.jdi.AbsentInformationException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -67,13 +68,14 @@ public class ResultMonitor implements Runnable
 
             results = m_simulator.getFinalElectronList();
             List<BigDecimal> recombinationTimes = new ArrayList<>();
-            List<BigDecimal> recombinationEnergies = new ArrayList<>();
+            List<BigDecimal> recombinationWavelengths = new ArrayList<>();
 
             for (Electron el: results.keySet())
             {
                 try
                 {
-                    recombinationEnergies.add(new BigDecimal(el.getRecombinationEnergy().toString()));
+                    BigDecimal wavelength = PhysicsTools.h.multiply(PhysicsTools.c).divide(el.getRecombinationEnergy());
+                    recombinationWavelengths.add(new BigDecimal(wavelength.toString()));
                     recombinationTimes.add(new BigDecimal(results.get(el).toString()));
                 }
                 catch (AbsentInformationException ex)
@@ -82,7 +84,7 @@ public class ResultMonitor implements Runnable
                 }
             }
 
-            m_manager.computeResults(recombinationEnergies, recombinationTimes);
+            m_manager.computeResults(recombinationWavelengths, recombinationTimes);
         }
     }
     

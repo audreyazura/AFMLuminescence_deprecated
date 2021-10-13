@@ -227,10 +227,10 @@ public class ExecutionManager implements Runnable
 
                     if(numberRegex.matcher(lineSplit[0]).matches())
                     {
-                        BigDecimal energy = PhysicsTools.h.multiply(PhysicsTools.c).divide((new BigDecimal(lineSplit[0])).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier()), MathContext.DECIMAL128);
+                        BigDecimal wavelength = (new BigDecimal(lineSplit[0])).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier());
                         BigDecimal counts = new BigDecimal(lineSplit[1]);
 
-                        lumValues.put(energy, counts);
+                        lumValues.put(wavelength, counts);
 
                         if (counts.compareTo(maxCounts) > 0)
                         {
@@ -269,7 +269,7 @@ public class ExecutionManager implements Runnable
                     lumWriter.write("Wavelength (nm)\tIntensity (cps)");
                     for (BigDecimal abscissa: energySet)
                     {
-                        BigDecimal wavelengthNano = ((PhysicsTools.h.multiply(PhysicsTools.c)).divide(abscissa, MathContext.DECIMAL128)).divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
+                        BigDecimal wavelengthNano = abscissa.divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
 
                         lumWriter.newLine();
                         lumWriter.write(wavelengthNano.toPlainString() + "\t" + m_luminescence.getValueAtPosition(abscissa));

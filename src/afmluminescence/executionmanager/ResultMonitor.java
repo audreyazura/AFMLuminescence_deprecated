@@ -21,6 +21,8 @@ import afmluminescence.luminescencegenerator.GeneratorManager;
 import com.github.audreyazura.commonutils.PhysicsTools;
 import com.sun.jdi.AbsentInformationException;
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -74,7 +76,8 @@ public class ResultMonitor implements Runnable
             {
                 try
                 {
-                    BigDecimal wavelength = PhysicsTools.h.multiply(PhysicsTools.c).divide(el.getRecombinationEnergy());
+                    BigDecimal wavelength = PhysicsTools.h.multiply(PhysicsTools.c).divide(el.getRecombinationEnergy(), MathContext.DECIMAL128);
+                    wavelength = wavelength.setScale(wavelength.scale() - wavelength.precision() + 4, RoundingMode.HALF_UP);
                     recombinationWavelengths.add(new BigDecimal(wavelength.toString()));
                     recombinationTimes.add(new BigDecimal(results.get(el).toString()));
                 }

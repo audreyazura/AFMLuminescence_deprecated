@@ -19,7 +19,6 @@ package afmluminescence.executionmanager;
 import afmluminescence.luminescencegenerator.QuantumDot;
 import com.github.audreyazura.commonutils.ContinuousFunction;
 import com.github.audreyazura.commonutils.Metamaterial;
-import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.ArrayList;
@@ -40,7 +39,7 @@ public class QDFitter
     
     public QDFitter ()
     {
-        m_goodFit = true;
+        m_goodFit = false;
         m_fittedQDs = new ArrayList<>();
     }
     

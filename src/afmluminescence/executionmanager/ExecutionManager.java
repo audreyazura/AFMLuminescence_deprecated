@@ -102,9 +102,9 @@ public class ExecutionManager implements Runnable
         {
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("number of simulated electron not defined"));
         }
-        if (!configKeys.contains("maximum_fitting_repetition"))
+        if (!configKeys.contains("maximum_repetition"))
         {
-            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("maximum number of fitting loop not defined"));
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("maximum number of loop not defined"));
         }
         boolean containsTimestepKey = false;
         String timeStepKey = "";
@@ -161,40 +161,16 @@ public class ExecutionManager implements Runnable
         m_nElectron = tempnElectron;
         
         //initializing the maximum number of loops
-        if (m_isFittingMode)
+        int tempnLoops = 0;
+        try
         {
-            int tempnLoops = 0;
-            try
-            {
-                tempnLoops = Integer.parseInt(p_configuration.getProperty("maximum_fitting_repetition"));
-            }
-            catch(NumberFormatException ex)
-            {
-                Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, "maximum number of fitting loop has to be an integer", ex);
-            }
-            m_maxLoop = tempnLoops;
+            tempnLoops = Integer.parseInt(p_configuration.getProperty("maximum_repetition"));
         }
-        else
+        catch(NumberFormatException ex)
         {
-            m_maxLoop = 1;
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, "maximum number of loop has to be an integer", ex);
         }
-
-        //creating needed directory to store result
-        File spectraDirectory = new File(m_calculatedSpectraDirectory);
-        File TRPLDirectory = new File(m_calculatedTimeResolvedPLDirectory);
-        File QDListDirectory = new File(m_fittedQDListsDirectory);
-        if(!spectraDirectory.isDirectory())
-        {
-            spectraDirectory.mkdirs();
-        }
-        if(!TRPLDirectory.isDirectory())
-        {
-            TRPLDirectory.mkdirs();
-        }
-        if(!QDListDirectory.isDirectory())
-        {
-            QDListDirectory.mkdirs();
-        }
+        m_maxLoop = tempnLoops;
         
         //testing if gnuplot is installed
         boolean gnuplotExist;
@@ -259,6 +235,7 @@ public class ExecutionManager implements Runnable
             
             //if gnuplot is installed, we will use the luminescence to generate spectra image, so we save it in a format we know is readable by gnuplot
             m_luminescenceFile = new File(m_calculatedSpectraDirectory + "/Luminescence.dat");
+            m_luminescenceFile.mkdirs();
             if (m_gnuplotInstalled)
             {
                 try
@@ -360,8 +337,11 @@ public class ExecutionManager implements Runnable
             //making the QD distribution
             if (qdsPath.equals(""))
             {
+                System.out.println("Generating the QD distribution\n");
+                m_gui.sendMessage("Generating the QD distribution\n");
+
                 //QDs are randomly generated with size following a normal distribution
-                int nQDs = 300;
+                int nQDs = 400;
                 for (int i = 0 ; i < nQDs ; i += 1)
                 {
                     BigDecimal x, y, radius, height;
@@ -514,10 +494,10 @@ public class ExecutionManager implements Runnable
         System.out.println("Simulation finished.");
         m_gui.sendMessage("Simulation finished.");
         
-        //if there is a luminesence file (fitting case), we take its interval, otherwise we take a default 0. interval
+        //if there is a luminesence file (fitting case), we take its interval, otherwise we take a default 5 nm interval
         System.out.println("Sorting the results.");
         m_gui.sendMessage("Sorting the results.");
-        BigDecimal spectraInterval = new BigDecimal("0.001").multiply(PhysicsTools.EV);
+        BigDecimal spectraInterval = new BigDecimal("5").multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier());
         if (m_isFittingMode)
         {
             spectraInterval = m_luminescence.getMeanIntervalSize();
@@ -535,11 +515,13 @@ public class ExecutionManager implements Runnable
         m_loopCounter += 1;
         
         //saving the result to files and making pictures out of them if gnuplot is installed
-        String spectraFilePath = m_calculatedSpectraDirectory + "Spectra" + m_loopCounter + ".dat";
-        String TRPLFilePath = m_calculatedTimeResolvedPLDirectory + "TimeResolved" + m_loopCounter + ".dat";
+        File spectraFile = new File(m_calculatedSpectraDirectory + "Spectra" + m_loopCounter + ".dat");
+        spectraFile.getParentFile().mkdirs();
+        File TRPLFile = new File(m_calculatedTimeResolvedPLDirectory + "TimeResolved" + m_loopCounter + ".dat");
+        TRPLFile.getParentFile().mkdirs();
         try
         {
-            sorter.saveToFile(new File(TRPLFilePath), new File(spectraFilePath));
+            sorter.saveToFile(TRPLFile, spectraFile);
         }
         catch (IOException ex)
         {
@@ -548,14 +530,16 @@ public class ExecutionManager implements Runnable
 
         if (m_gnuplotInstalled)
         {
-            createPictures(m_loopCounter, spectraFilePath, TRPLFilePath);
+            createPictures(m_loopCounter, spectraFile.getAbsolutePath(), TRPLFile.getAbsolutePath());
         }
         
         System.out.println("Saving fitted QD list.");
         m_gui.sendMessage("Saving fitted QD list.");
+        File QDFile = new File(m_fittedQDListsDirectory + "FittedQDDistribution" + m_loopCounter + ".dat");
+        QDFile.getParentFile().mkdirs();
         try
         {
-            BufferedWriter resultWriter = new BufferedWriter(new FileWriter(m_fittedQDListsDirectory + "FittedQDDistribution" + m_loopCounter + ".dat"));
+            BufferedWriter resultWriter = new BufferedWriter(new FileWriter(QDFile));
 
             resultWriter.write("x (nm)\ty (nm)\tradius (nm)\theight (nm)\tenergy (eV)");
             resultWriter.newLine();
@@ -584,7 +568,7 @@ public class ExecutionManager implements Runnable
         m_gui.sendMessage("Calculation time: " + Duration.between(startTime, endTime).toMinutes() + " min " + Duration.between(startTime, endTime).toSecondsPart() + " s");
         
         //testing if the simulation finished or has to continue
-        if (!m_isFittingMode || fit.isGoodFit() || m_loopCounter >= m_maxLoop)
+        if (fit.isGoodFit() || m_loopCounter >= m_maxLoop)
         {
             System.out.println("Ending the simulation.");
             m_gui.sendMessage("Ending the simulation.");
@@ -621,8 +605,10 @@ public class ExecutionManager implements Runnable
         }
         else
         {
-            //we can only enter there if we are in fitting mode, so no check needed
-            m_QDList = fit.getFittedQDs();
+            if (m_isFittingMode)
+            {
+                m_QDList = fit.getFittedQDs();
+            }
             
             System.out.println("\nStarting a new simulation");
             m_gui.sendMessage("\nStarting a new simulation");

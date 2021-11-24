@@ -26,6 +26,7 @@ import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -44,12 +45,12 @@ public class QuantumDot extends AbsorberObject
     private final double m_escapeProbability;
     private final double m_recombinationProbability;
     private final int m_numberOfStates;
-    private final HashMap<Double, BigDecimal> m_probabilitiesPerlevel = new HashMap<>();
-    private final TreeSet<Double> m_recombinationProbaTree = new TreeSet<>();
+    private final HashMap<Double, BigDecimal> m_probabilitiesPerlevel;
+    private final TreeSet<Double> m_recombinationProbaTree;
     
     private int m_numberOfFreeStates;
     
-    public QuantumDot (BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_radius, BigDecimal p_height, BigDecimal p_meanEnergy, double p_captureProba, double p_escapeProba, double p_recombinationProba, Map<Double, BigDecimal> p_energyLevelsPopProba, int p_nbLevels, int p_nbFreeLevels)
+    public QuantumDot (BigDecimal p_positionX, BigDecimal p_positionY, BigDecimal p_radius, BigDecimal p_height, BigDecimal p_meanEnergy, double p_captureProba, double p_escapeProba, double p_recombinationProba, Map<Double, BigDecimal> p_energyLevelsPopProba, Set<Double> p_recombProba, int p_nbLevels, int p_nbFreeLevels)
     {
         m_positionX = new BigDecimal(p_positionX.toString());
         m_positionY = new BigDecimal(p_positionY.toString());
@@ -62,9 +63,16 @@ public class QuantumDot extends AbsorberObject
         m_numberOfStates = p_nbLevels;
         m_numberOfFreeStates = p_nbFreeLevels;
         
+        m_probabilitiesPerlevel = new HashMap<>();
         for (Double proba: p_energyLevelsPopProba.keySet())
         {
-            m_probabilitiesPerlevel.put(proba, p_energyLevelsPopProba.get(proba));
+            m_probabilitiesPerlevel.put(proba, new BigDecimal(p_energyLevelsPopProba.get(proba).toString()));
+        }
+        
+        m_recombinationProbaTree = new TreeSet<>();
+        for (Double proba: p_recombProba)
+        {
+            m_recombinationProbaTree.add(proba);
         }
     }
 
@@ -119,6 +127,9 @@ public class QuantumDot extends AbsorberObject
         
         m_numberOfStates = nbStates;
         m_numberOfFreeStates = m_numberOfStates;
+        
+        m_probabilitiesPerlevel = new HashMap<>();
+        m_recombinationProbaTree = new TreeSet<>();
         
         if (nbStates == 0)
         {
@@ -178,6 +189,8 @@ public class QuantumDot extends AbsorberObject
             m_meanQDEnergy = meanEnergy;
         }
         
+//       System.out.println(m_recombinationProbaTree.size() + "\t" + m_baseCaptureProbability + "\t" + canCapture());
+        
         //the escape probability is calculated using P_capture = 1 - exp(-Δt/tau_escape) with tau_escape from https://aip.scitation.org/doi/10.1063/1.4824469
         m_escapeProbability = (BigDecimal.ONE.subtract(BigDecimalMath.exp(p_timeStep.negate().divide(QDMaterial.getEscapeTime(m_radius), MathContext.DECIMAL128)))).doubleValue();
         
@@ -187,7 +200,7 @@ public class QuantumDot extends AbsorberObject
     
     synchronized public boolean canCapture()
     {
-        return m_baseCaptureProbability >= 0 && m_numberOfFreeStates >= 0;
+        return m_baseCaptureProbability > 0 && m_numberOfFreeStates > 0;
     }
     
     /**
@@ -208,6 +221,7 @@ public class QuantumDot extends AbsorberObject
     synchronized public boolean capture(PcgRSFast p_RNG, BigDecimal electronDistance, BigDecimal electronSpan)
     {
         double reachingProbability = 0;
+        boolean result = false;
         
         /** calculating the probability of the electron to reach the QD
         *   This is done by calculating how many of the position the electron can reach are occupied by the QD
@@ -266,23 +280,21 @@ public class QuantumDot extends AbsorberObject
                 System.out.println("Probability has to be bound between 0 and 1");
                 Logger.getLogger(QuantumDot.class.getName()).log(Level.SEVERE, null, new ArithmeticException("Probability has to be bound between 0 and 1"));
             }
+            
+            //the complete capture probability is the probability to reach the QD multiplied by the probability to be captured multiplied by the ratio of remaining free states
+            if (p_RNG.nextDouble() < reachingProbability * m_baseCaptureProbability * (m_numberOfFreeStates / m_numberOfStates))
+            {
+                m_numberOfFreeStates -= 1;
+                result = true;
+            }
         }
         
-        //the complete capture probability is the probability to reach the QD multiplied by the probability to be captured multiplied by the ratio of remaining free states
-        if (p_RNG.nextDouble() < reachingProbability * m_baseCaptureProbability * (m_numberOfFreeStates / m_numberOfStates))
-        {
-            m_numberOfFreeStates -= 1;
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        return result;
     }
     
     public QuantumDot copy()
     {
-        return new QuantumDot(m_positionX, m_positionY, m_radius, m_height, m_meanQDEnergy, m_baseCaptureProbability, m_escapeProbability, m_recombinationProbability, m_probabilitiesPerlevel, m_numberOfStates, m_numberOfFreeStates);
+        return new QuantumDot(m_positionX, m_positionY, m_radius, m_height, m_meanQDEnergy, m_baseCaptureProbability, m_escapeProbability, m_recombinationProbability, m_probabilitiesPerlevel, m_recombinationProbaTree, m_numberOfStates, m_numberOfFreeStates);
     }
     
     public QuantumDot copyWithSizeChange(BigDecimal p_sizeMultiplier, BigDecimal p_timeStep, Metamaterial p_sampleMaterial)
@@ -427,9 +439,6 @@ public class QuantumDot extends AbsorberObject
         return m_radius;
     }
     
-    //TO BE ENTIRELY REDONE: return the recombination energy, or 0. First see if recombined, then get a new random number and see from which level it recombines.
-    //current algorithm seem pretty bad
-    //create a getMeanEnergy() method
     synchronized public BigDecimal recombine(PcgRSFast p_RNG)
     {
         BigDecimal result;
@@ -438,8 +447,8 @@ public class QuantumDot extends AbsorberObject
         {
             double randomNumber = p_RNG.nextDouble();
             Iterator<Double> probaIterator = m_recombinationProbaTree.iterator();
-            double proba;
-            while ((proba = probaIterator.next()) < randomNumber){}
+            double proba = m_recombinationProbaTree.first();
+            while (probaIterator.hasNext() && (proba = probaIterator.next()) < randomNumber){}
             result = m_probabilitiesPerlevel.get(proba);
             
             m_numberOfFreeStates += 1;

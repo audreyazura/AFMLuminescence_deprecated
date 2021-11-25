@@ -516,7 +516,7 @@ public class ExecutionManager implements Runnable
             gnuplotWriter.newLine();
             gnuplotWriter.write("set xlabel \"Energy (eV)\"");
             gnuplotWriter.newLine();
-            gnuplotWriter.write("set ylabel \"Number of states\"");
+            gnuplotWriter.write("set ylabel \"Density of states (m^{-2})\"");
             gnuplotWriter.newLine();
             gnuplotWriter.write("plot \"" + p_DOSFile + "\" u 1:2 w line t \"Density of states\"");
             gnuplotWriter.newLine();
@@ -566,7 +566,7 @@ public class ExecutionManager implements Runnable
                 spectraInterval = new BigDecimal("0.002").multiply(PhysicsTools.EV);
             }
         }
-        SimulationSorter sorter = new SimulationSorter(m_wavelengthAbscissa, spectraInterval, p_recombinationTimes, p_recombinationEnergies, everyStates);
+        SimulationSorter sorter = new SimulationSorter(m_wavelengthAbscissa, spectraInterval, p_recombinationTimes, p_recombinationEnergies, everyStates, m_sampleXSize.multiply(m_sampleYSize));
         
         QDFitter fit = new QDFitter();
         if (m_isFittingMode)

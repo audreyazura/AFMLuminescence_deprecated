@@ -38,11 +38,11 @@ public class SimulationSorter
 {
     private final boolean m_wavelengthAbscissa;
     private final ContinuousFunction m_spectra;
-    private final HashMap<BigDecimal, Integer> m_densityOfStates = new HashMap<>();
+    private final HashMap<BigDecimal, BigDecimal> m_densityOfStates = new HashMap<>();
     private final HashMap<BigDecimal, BigDecimal> m_times = new HashMap<>();
     private final HashMap<BigDecimal, BigDecimal> m_energies = new HashMap<>();
     
-    public SimulationSorter (boolean p_wavelengthAbscissa, BigDecimal p_energyIntervalSize, List<BigDecimal> p_timesList, List<BigDecimal> p_energyList, List<BigDecimal> p_statesLevels)
+    public SimulationSorter (boolean p_wavelengthAbscissa, BigDecimal p_energyIntervalSize, List<BigDecimal> p_timesList, List<BigDecimal> p_energyList, List<BigDecimal> p_statesLevels, BigDecimal p_sampleVolume)
     {
         m_wavelengthAbscissa = p_wavelengthAbscissa;
         
@@ -118,11 +118,11 @@ public class SimulationSorter
                 p_statesLevels.remove(0);
             }
             
-            m_densityOfStates.put(lowestBound, nLevels);
+            m_densityOfStates.put(lowestBound, (new BigDecimal(nLevels)).divide(p_sampleVolume));
         }
     }
     
-    static public SimulationSorter sorterWithNoIntervalGiven(boolean p_wavelengthAbscissa, List<BigDecimal> p_timesList, List<BigDecimal> p_energiesList, List<BigDecimal> p_energyLevels)
+    static public SimulationSorter sorterWithNoIntervalGiven(boolean p_wavelengthAbscissa, List<BigDecimal> p_timesList, List<BigDecimal> p_energiesList, List<BigDecimal> p_energyLevels, BigDecimal p_sampleVolume)
     {
         //guessing a good energy interval size: separating the energy span into 
         BigDecimal energyInterval;
@@ -139,7 +139,7 @@ public class SimulationSorter
             energyInterval = (new BigDecimal("0.002")).multiply(PhysicsTools.EV);
         }
         
-        return new SimulationSorter(p_wavelengthAbscissa, energyInterval, p_timesList, p_energiesList, p_energyLevels);
+        return new SimulationSorter(p_wavelengthAbscissa, energyInterval, p_timesList, p_energiesList, p_energyLevels, p_sampleVolume);
     }
     
     public void saveToFile(File timeFile, File energyFile, File DOSFile) throws IOException
@@ -182,7 +182,7 @@ public class SimulationSorter
         //writing DOS
         Set<BigDecimal> statesSet = new TreeSet<>(m_densityOfStates.keySet());
         BufferedWriter DOSwriter = new BufferedWriter(new FileWriter(DOSFile));
-        DOSwriter.write("Energy (eV)\tNumber of states");
+        DOSwriter.write("Energy (eV)\tDOS (m^-2)");
         for (BigDecimal state: statesSet)
         {
             BigDecimal stateToWrite = state.divide(PhysicsTools.EV, MathContext.DECIMAL128).setScale(state.scale() - state.precision() + 4, RoundingMode.HALF_UP);

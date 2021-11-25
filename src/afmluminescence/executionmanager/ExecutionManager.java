@@ -61,6 +61,7 @@ public class ExecutionManager implements Runnable
     private final BigDecimal m_timeStep;
     private final boolean m_gnuplotInstalled;
     private final boolean m_isFittingMode;
+    private final boolean m_wavelengthAbscissa;
     private final ContinuousFunction m_luminescence;
     private final File m_luminescenceFile;
     private final GUIUpdater m_gui;
@@ -82,7 +83,6 @@ public class ExecutionManager implements Runnable
     {
         //testing if the property file has the correct fields
         Set<String> configKeys = p_configuration.stringPropertyNames();
-        Pattern timeStepKeyPattern = Pattern.compile("simulation_timestep_.{0,1}s");
         if (!configKeys.contains("execution_mode"))
         {
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("execution mode property not defined"));
@@ -107,7 +107,13 @@ public class ExecutionManager implements Runnable
         {
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("maximum number of loop not defined"));
         }
+        if (!configKeys.contains("abscissa_type"))
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("abscissa type undefined"));
+        }
+            
         boolean containsTimestepKey = false;
+        Pattern timeStepKeyPattern = Pattern.compile("simulation_timestep_.{0,1}s");
         String timeStepKey = "";
         for (String key: configKeys)
         {
@@ -117,7 +123,6 @@ public class ExecutionManager implements Runnable
                 break;
             }
         }
-        
         if (!containsTimestepKey)
         {
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("timestep not defined"));
@@ -134,6 +139,14 @@ public class ExecutionManager implements Runnable
         if (!m_isFittingMode && !executionMode.equals("simulation"))
         {
             Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("Please select an execution mode between \"fitting\" and \"simulation\""));
+        }
+        
+        //select the abscissa type
+        String abscissaType = p_configuration.getProperty("abscissa_type");
+        m_wavelengthAbscissa = abscissaType.equals("wavelength");
+        if (!m_wavelengthAbscissa && !abscissaType.equals("energy"))
+        {
+            Logger.getLogger(ExecutionManager.class.getName()).log(Level.SEVERE, null, new IOException("Please select an abscissa type between \"wavelength\" and \"energy\""));
         }
 
         //initializing timestep
@@ -204,10 +217,19 @@ public class ExecutionManager implements Runnable
 
                     if(numberRegex.matcher(lineSplit[0]).matches())
                     {
-                        BigDecimal wavelength = (new BigDecimal(lineSplit[0])).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier());
+                        BigDecimal abscissa;
+                        if (m_wavelengthAbscissa)
+                        {
+                            abscissa = (new BigDecimal(lineSplit[0])).multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier());
+                        }
+                        else
+                        {
+                            abscissa = (new BigDecimal(lineSplit[0])).multiply(PhysicsTools.EV);
+                        }
+                        
                         BigDecimal counts = new BigDecimal(lineSplit[1]);
 
-                        lumValues.put(wavelength, counts);
+                        lumValues.put(abscissa, counts);
 
                         if (counts.compareTo(maxCounts) > 0)
                         {
@@ -247,10 +269,18 @@ public class ExecutionManager implements Runnable
                     lumWriter.write("Wavelength (nm)\tIntensity (cps)");
                     for (BigDecimal abscissa: energySet)
                     {
-                        BigDecimal wavelengthNano = abscissa.divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
+                        BigDecimal sacledAbscissa;
+                        if (m_wavelengthAbscissa)
+                        {
+                            sacledAbscissa = abscissa.divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
+                        }
+                        else
+                        {
+                            sacledAbscissa = abscissa.divide(PhysicsTools.EV, MathContext.DECIMAL128);
+                        }
 
                         lumWriter.newLine();
-                        lumWriter.write(wavelengthNano.toPlainString() + "\t" + m_luminescence.getValueAtPosition(abscissa));
+                        lumWriter.write(sacledAbscissa.toPlainString() + "\t" + m_luminescence.getValueAtPosition(abscissa));
                     }
                     lumWriter.flush();
                     lumWriter.close();
@@ -417,7 +447,7 @@ public class ExecutionManager implements Runnable
             GeneratorManager luminescenceGenerator = new GeneratorManager(GUICommunicator, m_nElectron, m_QDList, new BigDecimal("300"), m_timeStep, m_sampleXSize, m_sampleYSize);
             Thread generatorThread = new Thread(luminescenceGenerator);
             
-            ResultMonitor monitor = new ResultMonitor(this, luminescenceGenerator, generatorThread);
+            ResultMonitor monitor = new ResultMonitor(m_wavelengthAbscissa, this, luminescenceGenerator, generatorThread);
             Thread monitorThread = new Thread(monitor);
             
             System.out.println("Starting simulation " + (m_loopCounter + 1));
@@ -459,12 +489,14 @@ public class ExecutionManager implements Runnable
                 experimentalLumLine = ","  + m_luminescenceFile.getCanonicalPath() + "\" u 1:2 w line t \"Experimental Lum\"";
             }
             
+            String xlabelSpectra = m_wavelengthAbscissa ? "Wavelength (nm)" : "Energy (eV)";
+            
             BufferedWriter gnuplotWriter = new BufferedWriter(new FileWriter(m_resultDirectory + ".gnuplotScript.gp"));
             gnuplotWriter.write("set terminal png");
             gnuplotWriter.newLine();
             gnuplotWriter.write("set ylabel \"Intensity (arb. units.)\"");
             gnuplotWriter.newLine();
-            gnuplotWriter.write("set xlabel \"Wavelength (nm)\"");
+            gnuplotWriter.write("set xlabel \"" + xlabelSpectra + "\"");
             gnuplotWriter.newLine();
             gnuplotWriter.write("set output \"" + spectraFile + "\"");
             gnuplotWriter.newLine();
@@ -518,12 +550,23 @@ public class ExecutionManager implements Runnable
         //if there is a luminesence file (fitting case), we take its interval, otherwise we take a default 5 nm interval
         System.out.println("Sorting the results.");
         m_gui.sendMessage("Sorting the results.");
-        BigDecimal spectraInterval = new BigDecimal("5").multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier());
+        BigDecimal spectraInterval;
         if (m_isFittingMode)
         {
             spectraInterval = m_luminescence.getMeanIntervalSize();
         }
-        SimulationSorter sorter = new SimulationSorter(spectraInterval, p_recombinationTimes, p_recombinationEnergies, everyStates);
+        else
+        {
+            if (m_wavelengthAbscissa)
+            {
+                spectraInterval = new BigDecimal("5").multiply(PhysicsTools.UnitsPrefix.NANO.getMultiplier());
+            }
+            else
+            {
+                spectraInterval = new BigDecimal("0.002").multiply(PhysicsTools.EV);
+            }
+        }
+        SimulationSorter sorter = new SimulationSorter(m_wavelengthAbscissa, spectraInterval, p_recombinationTimes, p_recombinationEnergies, everyStates);
         
         QDFitter fit = new QDFitter();
         if (m_isFittingMode)

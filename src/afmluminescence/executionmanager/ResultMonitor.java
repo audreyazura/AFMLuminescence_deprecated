@@ -34,19 +34,22 @@ import java.util.logging.Logger;
  */
 public class ResultMonitor implements Runnable
 {
+    private final boolean m_convertEnergy;
     private final ExecutionManager m_manager;
     private GeneratorManager m_simulator;
     private Thread m_monitoredThread;
     
     public ResultMonitor ()
     {
+        m_convertEnergy = false;
         m_manager = null;
         m_simulator = null;
         m_monitoredThread = null;
     }
     
-    public ResultMonitor (ExecutionManager p_manager, GeneratorManager p_simulator, Thread p_toMonitor)
+    public ResultMonitor (boolean p_convertEnergy, ExecutionManager p_manager, GeneratorManager p_simulator, Thread p_toMonitor)
     {
+        m_convertEnergy = p_convertEnergy;
         m_manager = p_manager;
         m_simulator = p_simulator;
         m_monitoredThread = p_toMonitor;
@@ -70,15 +73,23 @@ public class ResultMonitor implements Runnable
 
             results = m_simulator.getFinalElectronList();
             List<BigDecimal> recombinationTimes = new ArrayList<>();
-            List<BigDecimal> recombinationWavelengths = new ArrayList<>();
+            List<BigDecimal> recombinationEnergy = new ArrayList<>();
 
             for (Electron el: results.keySet())
             {
                 try
                 {
-                    BigDecimal wavelength = PhysicsTools.h.multiply(PhysicsTools.c).divide(el.getRecombinationEnergy(), MathContext.DECIMAL128);
-                    wavelength = wavelength.setScale(wavelength.scale() - wavelength.precision() + 4, RoundingMode.HALF_UP);
-                    recombinationWavelengths.add(new BigDecimal(wavelength.toString()));
+                    if (m_convertEnergy)
+                    {
+                        BigDecimal wavelength = PhysicsTools.h.multiply(PhysicsTools.c).divide(el.getRecombinationEnergy(), MathContext.DECIMAL128);
+                        recombinationEnergy.add(new BigDecimal(wavelength.toString()));
+                    }
+                    else
+                    {
+                        BigDecimal energy = el.getRecombinationEnergy();
+                        recombinationEnergy.add(new BigDecimal(energy.toString()));
+                    }
+                    
                     recombinationTimes.add(new BigDecimal(results.get(el).toString()));
                 }
                 catch (AbsentInformationException ex)
@@ -87,7 +98,7 @@ public class ResultMonitor implements Runnable
                 }
             }
 
-            m_manager.computeResults(recombinationWavelengths, recombinationTimes);
+            m_manager.computeResults(recombinationEnergy, recombinationTimes);
         }
     }
     

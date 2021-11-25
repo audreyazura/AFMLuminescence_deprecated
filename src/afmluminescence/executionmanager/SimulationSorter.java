@@ -36,16 +36,19 @@ import java.util.TreeSet;
  */
 public class SimulationSorter
 {
+    private final boolean m_wavelengthAbscissa;
     private final ContinuousFunction m_spectra;
     private final HashMap<BigDecimal, Integer> m_densityOfStates = new HashMap<>();
     private final HashMap<BigDecimal, BigDecimal> m_times = new HashMap<>();
-    private final HashMap<BigDecimal, BigDecimal> m_wavelengths = new HashMap<>();
+    private final HashMap<BigDecimal, BigDecimal> m_energies = new HashMap<>();
     
-    public SimulationSorter (BigDecimal p_wavelengthIntervalSize, List<BigDecimal> p_timesList, List<BigDecimal> p_wavelengthList, List<BigDecimal> p_energyLevels)
+    public SimulationSorter (boolean p_wavelengthAbscissa, BigDecimal p_energyIntervalSize, List<BigDecimal> p_timesList, List<BigDecimal> p_energyList, List<BigDecimal> p_statesLevels)
     {
+        m_wavelengthAbscissa = p_wavelengthAbscissa;
+        
         p_timesList.sort(null);
-        p_wavelengthList.sort(null);
-        p_energyLevels.sort(null);
+        p_energyList.sort(null);
+        p_statesLevels.sort(null);
         
         //INTERVAL CHOICE TO BE REWORKED, DOESN'T WORK WELL AT THE MOMENT
 
@@ -67,67 +70,76 @@ public class SimulationSorter
         }
         
         //the interval for the energy is given in the constructor
-        BigDecimal minWavelength = p_wavelengthList.get(0);
-        BigDecimal maxWavelength = p_wavelengthList.get(p_wavelengthList.size() - 1);
+        BigDecimal minEnergy = p_energyList.get(0);
+        BigDecimal maxEnergy = p_energyList.get(p_energyList.size() - 1);
         BigDecimal maxCounts = BigDecimal.ZERO;
         
-        for (BigDecimal currentWavelength = minWavelength ; currentWavelength.compareTo(maxWavelength) == -1 ; currentWavelength = currentWavelength.add(p_wavelengthIntervalSize))
+        for (BigDecimal currentEnergy = minEnergy ; currentEnergy.compareTo(maxEnergy) == -1 ; currentEnergy = currentEnergy.add(p_energyIntervalSize))
         {
-            BigDecimal currentMax = currentWavelength.add(p_wavelengthIntervalSize);
-            int nWavelengths = 0;
+            BigDecimal currentMax = currentEnergy.add(p_energyIntervalSize);
+            int nEnergy = 0;
             
-            while (p_wavelengthList.size() > 0 && p_wavelengthList.get(0).compareTo(currentMax) <= 0)
+            while (p_energyList.size() > 0 && p_energyList.get(0).compareTo(currentMax) <= 0)
             {
-                nWavelengths += 1;
-                p_wavelengthList.remove(0);
+                nEnergy += 1;
+                p_energyList.remove(0);
             }
             
-            BigDecimal nWavelengthsBig = new BigDecimal(nWavelengths);
-            m_wavelengths.put(currentWavelength, new BigDecimal(nWavelengths));
+            BigDecimal nEnergyBig = new BigDecimal(nEnergy);
+            m_energies.put(currentEnergy, new BigDecimal(nEnergy));
             
-            if (nWavelengthsBig.compareTo(maxCounts) > 0)
+            if (nEnergyBig.compareTo(maxCounts) > 0)
             {
-                maxCounts = nWavelengthsBig;
+                maxCounts = nEnergyBig;
             }
         }
         
         //normalisation
-        for (BigDecimal wavelength: m_wavelengths.keySet())
+        for (BigDecimal wavelength: m_energies.keySet())
         {
-            m_wavelengths.put(wavelength, m_wavelengths.get(wavelength).divide(maxCounts, MathContext.DECIMAL128));
+            m_energies.put(wavelength, m_energies.get(wavelength).divide(maxCounts, MathContext.DECIMAL128));
         }
         
-        m_spectra = new ContinuousFunction(m_wavelengths);
+        m_spectra = new ContinuousFunction(m_energies);
         
         //density of state calculation
-        BigDecimal minEnergy = p_energyLevels.get(0);
-        BigDecimal maxEnergy = p_energyLevels.get(p_energyLevels.size() - 1);
+        BigDecimal minState = p_statesLevels.get(0);
+        BigDecimal maxState = p_statesLevels.get(p_statesLevels.size() - 1);
         BigDecimal DOSInterval = (new BigDecimal("0.002")).multiply(PhysicsTools.EV);
         
-        for (BigDecimal lowestBound = minEnergy ; lowestBound.compareTo(maxEnergy) == -1 ; lowestBound = lowestBound.add(DOSInterval))
+        for (BigDecimal lowestBound = minState ; lowestBound.compareTo(maxState) == -1 ; lowestBound = lowestBound.add(DOSInterval))
         {
             BigDecimal currentMax = lowestBound.add(DOSInterval);
             int nLevels = 0;
             
-            while (p_energyLevels.size() > 0 && p_energyLevels.get(0).compareTo(currentMax) <= 0)
+            while (p_statesLevels.size() > 0 && p_statesLevels.get(0).compareTo(currentMax) <= 0)
             {
                 nLevels += 1;
-                p_energyLevels.remove(0);
+                p_statesLevels.remove(0);
             }
             
             m_densityOfStates.put(lowestBound, nLevels);
         }
     }
     
-    static public SimulationSorter sorterWithNoIntervalGiven(List<BigDecimal> p_timesList, List<BigDecimal> p_energiesList, List<BigDecimal> p_energyLevels)
+    static public SimulationSorter sorterWithNoIntervalGiven(boolean p_wavelengthAbscissa, List<BigDecimal> p_timesList, List<BigDecimal> p_energiesList, List<BigDecimal> p_energyLevels)
     {
         //guessing a good energy interval size: separating the energy span into 
-        p_energiesList.sort(null);
-        BigDecimal minWavelength = p_energiesList.get(0);
-        BigDecimal maxWavelength = p_energiesList.get(p_energiesList.size() - 1);
-        BigDecimal wavelengthInterval = (maxWavelength.subtract(minWavelength)).divide(new BigDecimal("150"), MathContext.DECIMAL128);
+        BigDecimal energyInterval;
         
-        return new SimulationSorter(wavelengthInterval, p_timesList, p_energiesList, p_energyLevels);
+        if (p_wavelengthAbscissa)
+        {
+            p_energiesList.sort(null);
+            BigDecimal minEnergy = p_energiesList.get(0);
+            BigDecimal maxEnergy = p_energiesList.get(p_energiesList.size() - 1);
+            energyInterval = (maxEnergy.subtract(minEnergy)).divide(new BigDecimal("150"), MathContext.DECIMAL128);
+        }
+        else
+        {
+            energyInterval = (new BigDecimal("0.002")).multiply(PhysicsTools.EV);
+        }
+        
+        return new SimulationSorter(p_wavelengthAbscissa, energyInterval, p_timesList, p_energiesList, p_energyLevels);
     }
     
     public void saveToFile(File timeFile, File energyFile, File DOSFile) throws IOException
@@ -145,16 +157,24 @@ public class SimulationSorter
         timeWriter.close();
         
         //writing wavelength calculated from energies
-        Set<BigDecimal> wavelengthSet = new TreeSet(m_wavelengths.keySet());
+        Set<BigDecimal> energySet = new TreeSet(m_energies.keySet());
         BufferedWriter spectraWriter = new BufferedWriter(new FileWriter(energyFile));
         spectraWriter.write("Wavelength (nm)\tIntensity");
-        for (BigDecimal wavelength: wavelengthSet)
+        for (BigDecimal energy: energySet)
         {
-//            BigDecimal wavelengthNano = ((PhysicsTools.h.multiply(PhysicsTools.c)).divide(energy, MathContext.DECIMAL128)).divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
-            BigDecimal wavelengthNano = wavelength.divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
+            BigDecimal energyConverted;
+            if (m_wavelengthAbscissa)
+            {
+                energyConverted = energy.divide(PhysicsTools.UnitsPrefix.NANO.getMultiplier(), MathContext.DECIMAL128);
+            }
+            else
+            {
+                energyConverted = energy.divide(PhysicsTools.EV, MathContext.DECIMAL128);
+            }
+            energyConverted = energyConverted.setScale(energyConverted.scale() - energyConverted.precision() + 4, RoundingMode.HALF_UP);
             
             spectraWriter.newLine();
-            spectraWriter.write(wavelengthNano.toPlainString() + "\t" + m_wavelengths.get(wavelength));
+            spectraWriter.write(energyConverted.toPlainString() + "\t" + m_energies.get(energy));
         }
         spectraWriter.flush();
         spectraWriter.close();

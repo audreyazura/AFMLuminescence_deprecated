@@ -72,6 +72,7 @@ public class ExecutionManager implements Runnable
     private final String m_calculatedSpectraDirectory = m_resultDirectory + "Spectra/";
     private final String m_calculatedTimeResolvedPLDirectory = m_resultDirectory + "TRPL/";
     private final String m_fittedQDListsDirectory = m_resultDirectory + "QDLists/";
+    private final String m_DOSDirectory = m_resultDirectory + "DOS/";
     private int m_loopCounter = 0;
     private List<QuantumDot> m_QDList = new ArrayList<>();
     
@@ -445,12 +446,13 @@ public class ExecutionManager implements Runnable
         return valid;
     }
     
-    private void createPictures (int p_fileIndex, String p_spectraFile, String p_TRPLFile)
+    private void createPictures (int p_fileIndex, String p_spectraFile, String p_TRPLFile, String p_DOSFile)
     {
         try
         {
             String spectraFile = m_calculatedSpectraDirectory + "Spectra" + p_fileIndex + ".png";
             String timeResolvedFile = m_calculatedTimeResolvedPLDirectory + "TimeResolved" + p_fileIndex + ".png";
+            String DOSFile = m_DOSDirectory + "DOS" + p_fileIndex + ".png";
             String experimentalLumLine = "";
             if (m_isFittingMode)
             {
@@ -477,6 +479,14 @@ public class ExecutionManager implements Runnable
             gnuplotWriter.write("plot \"" + p_TRPLFile + "\" u ($1/1000):2 w points t \"Time Resolved Luminescence\"");
             gnuplotWriter.newLine();
             gnuplotWriter.write("unset output");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("set output \"" + DOSFile + "\"");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("set xlabel \"Energy (eV)\"");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("plot \"" + p_DOSFile + "\" u 1:2 w line t \"Density of states\"");
+            gnuplotWriter.newLine();
+            gnuplotWriter.write("unset output");
             gnuplotWriter.flush();
             gnuplotWriter.close();
 
@@ -494,6 +504,15 @@ public class ExecutionManager implements Runnable
         System.out.println("Simulation finished.");
         m_gui.sendMessage("Simulation finished.");
         
+        //getting the list of states
+        System.out.println("Getting the list of states.");
+        m_gui.sendMessage("Getting the list of states.");
+        ArrayList<BigDecimal> everyStates = new ArrayList<>();
+        for (QuantumDot QD: m_QDList)
+        {
+            everyStates.addAll(QD.getStates());
+        }
+        
         //if there is a luminesence file (fitting case), we take its interval, otherwise we take a default 5 nm interval
         System.out.println("Sorting the results.");
         m_gui.sendMessage("Sorting the results.");
@@ -502,7 +521,7 @@ public class ExecutionManager implements Runnable
         {
             spectraInterval = m_luminescence.getMeanIntervalSize();
         }
-        SimulationSorter sorter = new SimulationSorter(spectraInterval, new ArrayList(p_recombinationTimes), new ArrayList(p_recombinationEnergies));
+        SimulationSorter sorter = new SimulationSorter(spectraInterval, p_recombinationTimes, p_recombinationEnergies, everyStates);
         
         QDFitter fit = new QDFitter();
         if (m_isFittingMode)
@@ -519,9 +538,11 @@ public class ExecutionManager implements Runnable
         spectraFile.getParentFile().mkdirs();
         File TRPLFile = new File(m_calculatedTimeResolvedPLDirectory + "TimeResolved" + m_loopCounter + ".dat");
         TRPLFile.getParentFile().mkdirs();
+        File DOSFile = new File(m_DOSDirectory + "DOS" + m_loopCounter + ".dat");
+        DOSFile.getParentFile().mkdirs();
         try
         {
-            sorter.saveToFile(TRPLFile, spectraFile);
+            sorter.saveToFile(TRPLFile, spectraFile, DOSFile);
         }
         catch (IOException ex)
         {
@@ -530,7 +551,7 @@ public class ExecutionManager implements Runnable
 
         if (m_gnuplotInstalled)
         {
-            createPictures(m_loopCounter, spectraFile.getAbsolutePath(), TRPLFile.getAbsolutePath());
+            createPictures(m_loopCounter, spectraFile.getAbsolutePath(), TRPLFile.getAbsolutePath(), DOSFile.getAbsolutePath());
         }
         
         System.out.println("Saving fitted QD list.");

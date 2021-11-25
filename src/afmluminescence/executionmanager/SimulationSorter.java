@@ -24,6 +24,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
@@ -36,13 +37,15 @@ import java.util.TreeSet;
 public class SimulationSorter
 {
     private final ContinuousFunction m_spectra;
+    private final HashMap<BigDecimal, Integer> m_densityOfStates = new HashMap<>();
     private final HashMap<BigDecimal, BigDecimal> m_times = new HashMap<>();
     private final HashMap<BigDecimal, BigDecimal> m_wavelengths = new HashMap<>();
     
-    public SimulationSorter (BigDecimal p_wavelengthIntervalSize, List<BigDecimal> p_timesList, List<BigDecimal> p_wavelengthList)
+    public SimulationSorter (BigDecimal p_wavelengthIntervalSize, List<BigDecimal> p_timesList, List<BigDecimal> p_wavelengthList, List<BigDecimal> p_energyLevels)
     {
         p_timesList.sort(null);
         p_wavelengthList.sort(null);
+        p_energyLevels.sort(null);
         
         //INTERVAL CHOICE TO BE REWORKED, DOESN'T WORK WELL AT THE MOMENT
 
@@ -95,9 +98,28 @@ public class SimulationSorter
         }
         
         m_spectra = new ContinuousFunction(m_wavelengths);
+        
+        //density of state calculation
+        BigDecimal minEnergy = p_energyLevels.get(0);
+        BigDecimal maxEnergy = p_energyLevels.get(p_energyLevels.size() - 1);
+        BigDecimal DOSInterval = (new BigDecimal("0.001")).multiply(PhysicsTools.EV);
+        
+        for (BigDecimal lowestBound = minEnergy ; lowestBound.compareTo(maxEnergy) == -1 ; lowestBound = lowestBound.add(DOSInterval))
+        {
+            BigDecimal currentMax = lowestBound.add(DOSInterval);
+            int nLevels = 0;
+            
+            while (p_energyLevels.size() > 0 && p_energyLevels.get(0).compareTo(currentMax) <= 0)
+            {
+                nLevels += 1;
+                p_energyLevels.remove(0);
+            }
+            
+            m_densityOfStates.put(lowestBound, nLevels);
+        }
     }
     
-    static public SimulationSorter sorterWithNoIntervalGiven(List<BigDecimal> p_timesList, List<BigDecimal> p_energiesList)
+    static public SimulationSorter sorterWithNoIntervalGiven(List<BigDecimal> p_timesList, List<BigDecimal> p_energiesList, List<BigDecimal> p_energyLevels)
     {
         //guessing a good energy interval size: separating the energy span into 
         p_energiesList.sort(null);
@@ -105,20 +127,11 @@ public class SimulationSorter
         BigDecimal maxWavelength = p_energiesList.get(p_energiesList.size() - 1);
         BigDecimal wavelengthInterval = (maxWavelength.subtract(minWavelength)).divide(new BigDecimal("150"), MathContext.DECIMAL128);
         
-        return new SimulationSorter(wavelengthInterval, p_timesList, p_energiesList);
+        return new SimulationSorter(wavelengthInterval, p_timesList, p_energiesList, p_energyLevels);
     }
     
-    public void saveToFile(File timeFile, File energyFile) throws IOException
+    public void saveToFile(File timeFile, File energyFile, File DOSFile) throws IOException
     {
-        if (!timeFile.getParentFile().isDirectory())
-        {
-            timeFile.getParentFile().mkdirs();
-        }
-        if (!energyFile.getParentFile().isDirectory())
-        {
-            timeFile.getParentFile().mkdirs();
-        }
-        
         //writing times
         Set<BigDecimal> timeSet = new TreeSet(m_times.keySet());
         BufferedWriter timeWriter = new BufferedWriter(new FileWriter(timeFile));
@@ -126,7 +139,7 @@ public class SimulationSorter
         for (BigDecimal time: timeSet)
         {
             timeWriter.newLine();
-            timeWriter.write(time.divide(PhysicsTools.UnitsPrefix.PICO.getMultiplier()).toPlainString() + "\t" + m_times.get(time));
+            timeWriter.write(time.divide(PhysicsTools.UnitsPrefix.PICO.getMultiplier(), MathContext.DECIMAL128).toPlainString() + "\t" + m_times.get(time));
         }
         timeWriter.flush();
         timeWriter.close();
@@ -145,6 +158,20 @@ public class SimulationSorter
         }
         spectraWriter.flush();
         spectraWriter.close();
+        
+        //writing DOS
+        Set<BigDecimal> statesSet = new TreeSet<>(m_densityOfStates.keySet());
+        BufferedWriter DOSwriter = new BufferedWriter(new FileWriter(DOSFile));
+        DOSwriter.write("Energy (eV)\tNumber of states");
+        for (BigDecimal state: statesSet)
+        {
+            BigDecimal stateToWrite = state.divide(PhysicsTools.EV, MathContext.DECIMAL128).setScale(state.scale() - state.precision() + 4, RoundingMode.HALF_UP);
+            
+            DOSwriter.newLine();
+            DOSwriter.write(stateToWrite.toPlainString() + "\t" + m_densityOfStates.get(state));
+        }
+        DOSwriter.flush();
+        DOSwriter.close();
     }
     
     public ContinuousFunction getLuminescence()

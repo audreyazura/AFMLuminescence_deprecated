@@ -23,6 +23,7 @@ import com.github.kilianB.pcg.fast.PcgRSFast;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -38,6 +39,7 @@ import org.nevec.rjm.BigDecimalMath;
  */
 public class QuantumDot extends AbsorberObject
 {
+    private final ArrayList<BigDecimal> m_listOfStates = new ArrayList<>();
     private final BigDecimal m_radius;
     private final BigDecimal m_height;
     private final BigDecimal m_meanQDEnergy;
@@ -91,6 +93,12 @@ public class QuantumDot extends AbsorberObject
         BigDecimal equivalentSquareSide = m_radius.multiply(BigDecimalMath.sqrt(BigDecimalMath.pi(MathContext.DECIMAL128), MathContext.DECIMAL128));
         
         BigDecimal CBOffset = p_sampleMaterial.getOffset(QDMaterial.getMaterialName(), barrierMaterial.getMaterialName()); //from https://aip.scitation.org/doi/abs/10.1063/1.125965
+
+        //calculating hole confinement energy, only considering one level
+        BigDecimal VBOffset = barrierMaterial.getBandgap().subtract(QDMaterial.getBandgap()).subtract(CBOffset);
+        BigDecimal planeEnergyParameterHole = energyParameter(0, equivalentSquareSide, VBOffset, QDMaterial.getHoleEffectiveMass());
+        BigDecimal heightEnergyParameterHole = energyParameter(0, m_height, VBOffset, QDMaterial.getHoleEffectiveMass());
+        BigDecimal holeConfinementEnergy = (two.multiply(PhysicsTools.hbar.pow(2)).divide(QDMaterial.getHoleEffectiveMass(), MathContext.DECIMAL128)).multiply(heightEnergyParameterHole.add(two.multiply(planeEnergyParameterHole)));
         
         int nbStates = 0;
         TreeSet<BigDecimal> energyLevels = new TreeSet<>();
@@ -121,6 +129,15 @@ public class QuantumDot extends AbsorberObject
                     
                     energyLevels.add(electronConfinementEnergy);
                     nbStates += 2;
+                    
+                    //adding the energy to the list of states
+                    BigDecimal totalRecombinationEnergy = electronConfinementEnergy.add(QDMaterial.getBandgap()).add(holeConfinementEnergy);
+                    if (totalRecombinationEnergy.compareTo(BigDecimal.ZERO) < 0)
+                    {
+                        throw new InternalError("Negative recombination energy.");
+                    }
+                    m_listOfStates.add(totalRecombinationEnergy);
+                    m_listOfStates.add(totalRecombinationEnergy);
                 }
             }
         }
@@ -142,12 +159,6 @@ public class QuantumDot extends AbsorberObject
             //else, the capture probability is calculated using P_capture = 1 - exp(-Δt/tau_capture), with tau_capture given in https://aip.scitation.org/doi/10.1063/1.1512694
             m_baseCaptureProbability = (BigDecimal.ONE.subtract(BigDecimalMath.exp(p_timeStep.negate().divide(QDMaterial.getCaptureTime(m_radius), MathContext.DECIMAL128)))).doubleValue();
             
-            //calculating hole confinement energy, only considering one level
-            BigDecimal VBOffset = barrierMaterial.getBandgap().subtract(QDMaterial.getBandgap()).subtract(CBOffset);
-            BigDecimal planeEnergyParameterHole = energyParameter(0, equivalentSquareSide, VBOffset, QDMaterial.getHoleEffectiveMass());
-            BigDecimal heightEnergyParameterHole = energyParameter(0, m_height, VBOffset, QDMaterial.getHoleEffectiveMass());
-            BigDecimal holeConfinementEnergy = (two.multiply(PhysicsTools.hbar.pow(2)).divide(QDMaterial.getHoleEffectiveMass(), MathContext.DECIMAL128)).multiply(heightEnergyParameterHole.add(two.multiply(planeEnergyParameterHole)));
-
             /**RECOMB PROBA PER LEVEL
              * calculate probability for each level using Fermi-Dirac distribution and the energy calculated from the QD material CB position
              * BIG approximation: chemical potential = 0
@@ -176,11 +187,6 @@ public class QuantumDot extends AbsorberObject
                 }
 
                 BigDecimal totalRecombinationEnergy = energy.add(QDMaterial.getBandgap()).add(holeConfinementEnergy);
-                if (totalRecombinationEnergy.compareTo(BigDecimal.ZERO) < 0)
-                {
-                    throw new InternalError("Negative recombination energy.");
-                }
-                
                 meanEnergy = meanEnergy.add(totalRecombinationEnergy.multiply(normalizedProba));
                 m_recombinationProbaTree.add(sumOfPreviousProba.doubleValue());
                 m_probabilitiesPerlevel.put(sumOfPreviousProba.doubleValue(), totalRecombinationEnergy);
@@ -437,6 +443,18 @@ public class QuantumDot extends AbsorberObject
     public BigDecimal getRadius()
     {
         return m_radius;
+    }
+    
+    public ArrayList<BigDecimal> getStates()
+    {
+        ArrayList<BigDecimal> listOfStates = new ArrayList<>();
+        
+        for (BigDecimal state: m_listOfStates)
+        {
+            listOfStates.add(new BigDecimal(state.toPlainString()));
+        }
+        
+        return listOfStates;
     }
     
     synchronized public BigDecimal recombine(PcgRSFast p_RNG)

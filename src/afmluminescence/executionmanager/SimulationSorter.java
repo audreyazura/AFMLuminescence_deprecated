@@ -102,7 +102,7 @@ public class SimulationSorter
         //density of state calculation
         BigDecimal minEnergy = p_energyLevels.get(0);
         BigDecimal maxEnergy = p_energyLevels.get(p_energyLevels.size() - 1);
-        BigDecimal DOSInterval = (new BigDecimal("0.001")).multiply(PhysicsTools.EV);
+        BigDecimal DOSInterval = (new BigDecimal("0.002")).multiply(PhysicsTools.EV);
         
         for (BigDecimal lowestBound = minEnergy ; lowestBound.compareTo(maxEnergy) == -1 ; lowestBound = lowestBound.add(DOSInterval))
         {

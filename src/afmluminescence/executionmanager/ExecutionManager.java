@@ -484,6 +484,8 @@ public class ExecutionManager implements Runnable
             gnuplotWriter.newLine();
             gnuplotWriter.write("set xlabel \"Energy (eV)\"");
             gnuplotWriter.newLine();
+            gnuplotWriter.write("set ylabel \"Number of states\"");
+            gnuplotWriter.newLine();
             gnuplotWriter.write("plot \"" + p_DOSFile + "\" u 1:2 w line t \"Density of states\"");
             gnuplotWriter.newLine();
             gnuplotWriter.write("unset output");

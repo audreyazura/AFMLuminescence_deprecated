@@ -159,7 +159,14 @@ public class SimulationSorter
         //writing wavelength calculated from energies
         Set<BigDecimal> energySet = new TreeSet(m_energies.keySet());
         BufferedWriter spectraWriter = new BufferedWriter(new FileWriter(energyFile));
-        spectraWriter.write("Wavelength (nm)\tIntensity");
+        if (m_wavelengthAbscissa)
+        {
+            spectraWriter.write("Wavelength (nm)\tIntensity");
+        }
+        else
+        {
+            spectraWriter.write("Energy (eV)\tIntensity");
+        }
         for (BigDecimal energy: energySet)
         {
             BigDecimal energyConverted;

@@ -417,7 +417,7 @@ public class ExecutionManager implements Runnable
                 String line;
                 while (((line = fileReader.readLine()) != null))
                 {	    
-                    String[] lineSplit = line.strip().split(";");
+                    String[] lineSplit = line.strip().split("[,;\t]");
 
                     if(numberRegex.matcher(lineSplit[0]).matches())
                     {

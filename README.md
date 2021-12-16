@@ -1,5 +1,9 @@
 # AFMLuminescence
 
+## Goal
+
+This software aim to reproduce the luminscence of a quantum dot (QD) layer. It does so by simulating a QD layer with electrons, and simulate their recombinations. The obtained spectra can be compared to one taken from an experiment, and the QD density can then be adjusted in order to extract the QD distribution from the luminescence.
+
 ## Alpha version
 
 The software is in alpha at the moment. Most functionnality are there, and it can generate luminescence from an inputed Quantum Dot distribution. However, there is still a problem in the fitting function, and after a few fitting passes, the fit deviate strongly from the experimental luminescence. The reasons are still under investigation.
@@ -13,10 +17,6 @@ A metamaterial file describe the compound used (for instance, InAs QD in GaAs ba
 Each material composing the metamaterial (for instance, InAs and GaAs) should be describe in there own file. Such a file has the extension \*.mat and is placed in the folder /src/ressources/materials/. If the material describe the QD material, it should contain the values of the capture times, escape times and recombination times for different size of quantum dots, either as file or as a number (in case of constant time). More information are given in the README file in the folder.
 
 Capture times, escape times and recombination times file goes respectively to the folder /src/ressources/capturetimes/, /src/ressources/escapetimes/ and /src/ressources/recombinationtimes/. The column in those file are separated by ";".
-
-## Goal
-
-This software aim to reproduce the luminscence of a quantum dot (QD) layer. It does so by simulating a QD layer with electrons, and simulate their recombinations. The obtained spectra can be compared to one taken from an experiment, and the QD density can then be adjusted in order to extract the QD distribution from the luminescence.
 
 ## Dependency
 
